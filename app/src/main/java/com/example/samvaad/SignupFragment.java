@@ -74,7 +74,7 @@ public class SignupFragment extends Fragment {
                                     .build();
                             firebaseUser.updateProfile(profileUpdates);
 
-                            // 2. Create User Document in Firestore (Experiment 11)
+                            // 2. Create User Document in Firestore
                             User newUser = new User(name, email, "Engineering Student");
                             db.collection("users").document(firebaseUser.getUid())
                                     .set(newUser)
@@ -84,11 +84,12 @@ public class SignupFragment extends Fragment {
                                         }
                                     })
                                     .addOnFailureListener(e -> {
-                                        Toast.makeText(getContext(), "Failed to save user data", Toast.LENGTH_SHORT).show();
+                                        // Displaying the EXACT error from Firebase
+                                        Toast.makeText(getContext(), "Firestore Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                                     });
                         }
                     } else {
-                        Toast.makeText(getContext(), "Registration failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Auth Error: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }

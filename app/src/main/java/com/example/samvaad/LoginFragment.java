@@ -21,11 +21,13 @@ import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginFragment extends Fragment {
 
     private static final int RC_SIGN_IN = 9001;
     private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
     private GoogleSignInClient mGoogleSignInClient;
     private TextInputEditText etEmail, etPassword;
 
@@ -35,6 +37,7 @@ public class LoginFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_login, container, false);
 
         mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
         etEmail = view.findViewById(R.id.et_email);
         etPassword = view.findViewById(R.id.et_password);
 
@@ -113,7 +116,18 @@ public class LoginFragment extends Fragment {
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(requireActivity(), task -> {
                     if (task.isSuccessful()) {
-                        updateUI(mAuth.getCurrentUser());
+                        FirebaseUser firebaseUser = mAuth.getCurrentUser();
+                        if (firebaseUser != null) {
+                            // Ensure user exists in Firestore for Google Login too
+                            db.collection("users").document(firebaseUser.getUid()).get()
+                                    .addOnSuccessListener(documentSnapshot -> {
+                                        if (!documentSnapshot.exists()) {
+                                            User newUser = new User(firebaseUser.getDisplayName(), firebaseUser.getEmail(), "Engineering Student");
+                                            db.collection("users").document(firebaseUser.getUid()).set(newUser);
+                                        }
+                                        updateUI(firebaseUser);
+                                    });
+                        }
                     } else {
                         Toast.makeText(getContext(), "Authentication Failed.", Toast.LENGTH_SHORT).show();
                     }
