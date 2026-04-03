@@ -12,7 +12,20 @@
           "package_name": "com.example.samvaad"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "90767614272-jqbde5e753vihs89u4bl0s23cf273ghb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.samvaad",
+            "certificate_hash": "5f0c336ad1b40963e49e343503a66448bc8614a5"
+          }
+        },
+        {
+          "client_id": "90767614272-ut09inem01m1ddtpl45ao1o57tuf168q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBjAyXH1wW2vKis2zE0FQJu5NXusZGPlP4"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "90767614272-ut09inem01m1ddtpl45ao1o57tuf168q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

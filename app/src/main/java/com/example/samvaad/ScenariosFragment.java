@@ -39,19 +39,19 @@ public class ScenariosFragment extends Fragment {
     private void fetchScenarios() {
         pbLoading.setVisibility(View.VISIBLE);
         
-        RetrofitClient.getApiService().getScenarios().enqueue(new Callback<List<Scenario>>() {
+        RetrofitClient.getApiService().getScenarios().enqueue(new Callback<ScenariosResponse>() {
             @Override
-            public void onResponse(Call<List<Scenario>> call, Response<List<Scenario>> response) {
+            public void onResponse(Call<ScenariosResponse> call, Response<ScenariosResponse> response) {
                 pbLoading.setVisibility(View.GONE);
-                if (response.isSuccessful() && response.body() != null) {
-                    displayScenarios(response.body());
+                if (response.isSuccessful() && response.body() != null && response.body().getScenarios() != null) {
+                    displayScenarios(response.body().getScenarios());
                 } else {
                     Toast.makeText(getContext(), "Failed to fetch data", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(Call<List<Scenario>> call, Throwable t) {
+            public void onFailure(Call<ScenariosResponse> call, Throwable t) {
                 pbLoading.setVisibility(View.GONE);
                 Log.e("ScenariosFragment", "Error: " + t.getMessage());
                 Toast.makeText(getContext(), "Network Error", Toast.LENGTH_SHORT).show();
@@ -80,7 +80,20 @@ public class ScenariosFragment extends Fragment {
 
             itemView.setOnClickListener(v -> {
                 // Navigate to session with this question
-                Toast.makeText(getContext(), "Selected: " + scenario.getTitle(), Toast.LENGTH_SHORT).show();
+                SessionFragment sessionFragment = new SessionFragment();
+                Bundle args = new Bundle();
+                args.putString("scenario_id", scenario.getId());
+                args.putString("scenario_title", scenario.getTitle());
+                args.putString("scenario_category", scenario.getCategory());
+                args.putString("scenario_difficulty", scenario.getDifficulty());
+                sessionFragment.setArguments(args);
+
+                if (getFragmentManager() != null) {
+                    getFragmentManager().beginTransaction()
+                            .replace(R.id.fragment_container, sessionFragment)
+                            .addToBackStack(null)
+                            .commit();
+                }
             });
 
             scenariosContainer.addView(itemView);
