@@ -1,5 +1,0 @@
-<resources>
-    <string name="app_name">Samvaad</string>
-    <!-- Replace this with your actual Web Client ID from Firebase Console -->
-    <string name="default_web_client_id">90767614272-ut09inem01m1ddtpl45ao1o57tuf168q.apps.googleusercontent.com</string>
-</resources>
