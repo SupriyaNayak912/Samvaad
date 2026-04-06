@@ -50,14 +50,25 @@ public class ProfileFragment extends Fragment {
     }
 
     private void fetchUserProfile(String uid) {
+        FirebaseUser firebaseUser = mAuth.getCurrentUser();
+        if (firebaseUser != null) {
+            tvName.setText(firebaseUser.getDisplayName() != null ? firebaseUser.getDisplayName() : "User");
+            tvEmail.setText(firebaseUser.getEmail());
+            tvRole.setText("Learner");
+            tvStreak.setText("0 days");
+        }
+
         db.collection("users").document(uid).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         User user = documentSnapshot.toObject(User.class);
                         if (user != null) {
-                            tvName.setText(user.getName());
-                            tvEmail.setText(user.getEmail());
-                            tvRole.setText(user.getRole());
+                            if (user.getName() != null && !user.getName().isEmpty()) {
+                                tvName.setText(user.getName());
+                            }
+                            if (user.getRole() != null) {
+                                tvRole.setText(user.getRole());
+                            }
                             tvStreak.setText(user.getPracticeStreak() + " days");
                         }
                     }

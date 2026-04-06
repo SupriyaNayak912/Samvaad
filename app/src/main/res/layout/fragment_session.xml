@@ -36,6 +36,7 @@
         app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
         app:layout_constraintBottom_toTopOf="@id/ll_controls"
+        app:layout_constraintBottom_toTopOf="@id/card_question"
         app:layout_constraintTop_toBottomOf="@id/tv_subtitle">
 
         <androidx.camera.view.PreviewView
@@ -154,7 +155,7 @@
     </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/card_chaos"
+        android:id="@+id/card_question"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
@@ -163,23 +164,38 @@
         app:layout_constraintBottom_toTopOf="@id/btn_start">
 
         <TextView
+            android:id="@+id/tv_question_category"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Background Mode"
-            android:textColor="@color/text_secondary"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:text="Loading Interview Question..."
+            android:textColor="@color/primary_purple"
+            android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
+            android:id="@+id/tv_question_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Please wait while we fetch your question from the server."
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            app:layout_constraintTop_toBottomOf="@id/tv_question_category" />
+
+        <TextView
+            android:id="@+id/tv_timer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Chaos Mode ON"
-            android:textColor="@color/primary_purple"
+            android:layout_marginTop="16dp"
+            android:text="00:00"
+            android:textColor="@color/status_red"
+            android:textSize="24sp"
             android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/tv_question_text"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.google.android.material.button.MaterialButton

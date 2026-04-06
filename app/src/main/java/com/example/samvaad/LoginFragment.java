@@ -106,7 +106,7 @@ public class LoginFragment extends Fragment {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
                 firebaseAuthWithGoogle(account.getIdToken());
             } catch (ApiException e) {
-                Toast.makeText(getContext(), "Google sign in failed", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "Google sign in failed: " + e.getStatusCode() + " " + e.getMessage(), Toast.LENGTH_LONG).show();
             }
         }
     }

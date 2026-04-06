@@ -7,9 +7,9 @@ import retrofit2.http.GET;
 public interface ApiService {
     // This is where your REST APIs are defined (Experiment 6)
     @GET("scenarios") // The endpoint URL
-    Call<List<Scenario>> getScenarios();
-    
+    Call<ScenariosResponse> getScenarios();
+
     // Example for fetching a single random question
-    @GET("random-question")
+    @GET("scenarios/random")
     Call<Scenario> getRandomQuestion();
 }
