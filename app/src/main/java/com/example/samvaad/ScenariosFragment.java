@@ -1,89 +1,160 @@
 package com.example.samvaad;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModel;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import com.example.samvaad.databinding.FragmentScenariosBinding;
+import com.example.samvaad.ui.base.BaseFragment;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class ScenariosFragment extends Fragment {
+public class ScenariosFragment extends BaseFragment<FragmentScenariosBinding> {
 
-    private LinearLayout scenariosContainer;
-    private ProgressBar pbLoading;
+    // ── Stub ViewModel satisfying BaseFragment ───────────────────────
+    public static class ScenariosViewModel extends ViewModel {}
 
-    @Nullable
+    private ScenarioAdapter adapter;
+    private List<Scenario> allScenarios = new ArrayList<>();
+    private String activeCategory = "All";
+    private String activeQuery    = "";
+
+    @NonNull
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_scenarios, container, false);
-
-        scenariosContainer = view.findViewById(R.id.scenarios_container);
-        pbLoading = view.findViewById(R.id.pb_loading);
-
-        fetchScenarios();
-
-        return view;
+    protected FragmentScenariosBinding inflateBinding(@NonNull LayoutInflater inflater,
+                                                      @Nullable ViewGroup container,
+                                                      boolean attachToRoot) {
+        return FragmentScenariosBinding.inflate(inflater, container, attachToRoot);
     }
 
+    @Override
+    protected void setupUI() {
+        setupRecyclerView();
+        setupSearch();
+        setupChips();
+        setupFab();
+        fetchScenarios();
+    }
+
+    // ── RecyclerView ─────────────────────────────────────────────────
+    private void setupRecyclerView() {
+        adapter = new ScenarioAdapter(new ArrayList<>(), this::navigateToSession, false);
+        getBinding().rvScenarios.setLayoutManager(new LinearLayoutManager(requireContext()));
+        getBinding().rvScenarios.setAdapter(adapter);
+    }
+
+    // ── Search bar ───────────────────────────────────────────────────
+    private void setupSearch() {
+        getBinding().etSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                activeQuery = s.toString();
+                applyFilters();
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+    }
+
+    // ── Category chips ───────────────────────────────────────────────
+    private void setupChips() {
+        getBinding().chipGroupCategory.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) {
+                activeCategory = "All";
+            } else {
+                int id = checkedIds.get(0);
+                if      (id == R.id.chip_hr)         activeCategory = "HR";
+                else if (id == R.id.chip_technical)  activeCategory = "Technical";
+                else if (id == R.id.chip_behavioral) activeCategory = "Behavioral";
+                else if (id == R.id.chip_custom)     activeCategory = "Custom";
+                else                                 activeCategory = "All";
+            }
+            applyFilters();
+        });
+    }
+
+    // ── FAB → BottomSheet ─────────────────────────────────────────────
+    private void setupFab() {
+        getBinding().fabCreateScenario.setOnClickListener(v -> {
+            CreateScenarioBottomSheet sheet = new CreateScenarioBottomSheet();
+            sheet.setOnScenarioCreatedListener(scenario -> {
+                allScenarios.add(0, scenario);
+                applyFilters();
+                showError("Scenario \"" + scenario.getTitle() + "\" created!");
+                // TODO: also persist to Firestore here
+            });
+            sheet.show(getParentFragmentManager(), CreateScenarioBottomSheet.class.getSimpleName());
+        });
+    }
+
+    // ── Fetch from API ────────────────────────────────────────────────
     private void fetchScenarios() {
-        pbLoading.setVisibility(View.VISIBLE);
-        
+        getBinding().pbLoading.setVisibility(android.view.View.VISIBLE);
+
         RetrofitClient.getApiService().getScenarios().enqueue(new Callback<List<Scenario>>() {
             @Override
-            public void onResponse(Call<List<Scenario>> call, Response<List<Scenario>> response) {
-                pbLoading.setVisibility(View.GONE);
+            public void onResponse(@NonNull Call<List<Scenario>> call,
+                                   @NonNull Response<List<Scenario>> response) {
+                getBinding().pbLoading.setVisibility(android.view.View.GONE);
                 if (response.isSuccessful() && response.body() != null) {
-                    displayScenarios(response.body());
+                    allScenarios.clear();
+                    allScenarios.addAll(response.body());
+                    applyFilters();
                 } else {
-                    Toast.makeText(getContext(), "Failed to fetch data", Toast.LENGTH_SHORT).show();
+                    loadPlaceholderData();
                 }
             }
 
             @Override
-            public void onFailure(Call<List<Scenario>> call, Throwable t) {
-                pbLoading.setVisibility(View.GONE);
-                Log.e("ScenariosFragment", "Error: " + t.getMessage());
-                Toast.makeText(getContext(), "Network Error", Toast.LENGTH_SHORT).show();
+            public void onFailure(@NonNull Call<List<Scenario>> call, @NonNull Throwable t) {
+                getBinding().pbLoading.setVisibility(android.view.View.GONE);
+                showError("Network error — showing cached scenarios");
+                loadPlaceholderData();
             }
         });
     }
 
-    private void displayScenarios(List<Scenario> scenarios) {
-        scenariosContainer.removeAllViews();
-        for (Scenario scenario : scenarios) {
-            View itemView = getLayoutInflater().inflate(R.layout.item_scenario, scenariosContainer, false);
-            
-            TextView tvTitle = itemView.findViewById(R.id.tv_scenario_title);
-            TextView tvDiff = itemView.findViewById(R.id.tv_difficulty);
-            
-            tvTitle.setText(scenario.getTitle());
-            tvDiff.setText(scenario.getDifficulty());
-            
-            // Set color based on difficulty
-            if (scenario.getDifficulty().equalsIgnoreCase("Easy")) {
-                tvDiff.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_green));
-                tvDiff.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.bg_start));
-            } else if (scenario.getDifficulty().equalsIgnoreCase("Hard")) {
-                tvDiff.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_red));
-            }
+    // ── Placeholder data (shown on network failure) ───────────────────
+    private void loadPlaceholderData() {
+        allScenarios.clear();
+        allScenarios.add(new Scenario("1",  "Tell me about yourself",         "HR",         "Beginner",    5, 82f));
+        allScenarios.add(new Scenario("2",  "Explain a recent project",        "Technical",  "Intermediate",7, 74f));
+        allScenarios.add(new Scenario("3",  "Describe a conflict at work",     "Behavioral", "Expert",      4, 88f));
+        allScenarios.add(new Scenario("4",  "What are your greatest strengths?","HR",         "Beginner",    3, 79f));
+        allScenarios.add(new Scenario("5",  "Walk me through your resume",     "HR",         "Intermediate",6, 85f));
+        allScenarios.add(new Scenario("6",  "Describe your testing approach",  "Technical",  "Expert",      8, 91f));
+        applyFilters();
+    }
 
-            itemView.setOnClickListener(v -> {
-                // Navigate to session with this question
-                Toast.makeText(getContext(), "Selected: " + scenario.getTitle(), Toast.LENGTH_SHORT).show();
-            });
+    // ── Combined search + category filter ─────────────────────────────
+    private void applyFilters() {
+        List<Scenario> filtered = allScenarios.stream()
+                .filter(s -> activeCategory.equals("All") ||
+                        (s.getCategory() != null &&
+                         s.getCategory().equalsIgnoreCase(activeCategory)))
+                .filter(s -> activeQuery.isEmpty() ||
+                        (s.getTitle() != null &&
+                         s.getTitle().toLowerCase(Locale.getDefault())
+                                 .contains(activeQuery.toLowerCase(Locale.getDefault()))))
+                .collect(Collectors.toList());
 
-            scenariosContainer.addView(itemView);
-        }
+        adapter.updateData(filtered);
+    }
+
+    // ── Navigate to Live Session with Scenario ────────────────────────
+    private void navigateToSession(Scenario scenario) {
+        Intent intent = new Intent(requireContext(), LiveSessionActivity.class);
+        intent.putExtra("scenario", scenario);
+        startActivity(intent);
     }
 }

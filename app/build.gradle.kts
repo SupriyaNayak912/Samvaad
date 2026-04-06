@@ -30,6 +30,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -58,7 +62,14 @@ dependencies {
     implementation(libs.camera.lifecycle)
     implementation(libs.camera.view)
 
+    // ML Kit Face Detection
+    implementation("com.google.mlkit:face-detection:16.1.6")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
+    // Charting & Data Visualizations (Analytics Engine)
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    implementation("com.mikhaellopez:circularprogressbar:3.1.0")
 }

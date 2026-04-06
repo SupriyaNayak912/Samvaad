@@ -5,39 +5,53 @@
     android:layout_height="match_parent"
     android:background="@drawable/main_gradient_bg">
 
-    <LinearLayout
-        android:id="@+id/ll_logo"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
+    <!-- Outer glow ring (decorative) -->
+    <View
+        android:id="@+id/ring_outer"
+        android:layout_width="130dp"
+        android:layout_height="130dp"
+        android:background="@drawable/glow_ring"
+        android:alpha="0.35"
         app:layout_constraintBottom_toTopOf="@id/tv_app_name"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed">
+        app:layout_constraintVertical_chainStyle="packed" />
 
-        <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:src="@android:drawable/ic_btn_speak_now"
-            app:tint="@color/primary_blue" />
+    <!-- Inner glow ring -->
+    <View
+        android:id="@+id/ring_inner"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:background="@drawable/glow_ring"
+        android:alpha="0.55"
+        app:layout_constraintBottom_toBottomOf="@id/ring_outer"
+        app:layout_constraintEnd_toEndOf="@id/ring_outer"
+        app:layout_constraintStart_toStartOf="@id/ring_outer"
+        app:layout_constraintTop_toTopOf="@id/ring_outer" />
 
-        <ImageView
-            android:layout_width="48dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="8dp"
-            android:src="@android:drawable/ic_lock_silent_mode_off"
-            app:tint="@color/primary_purple" />
+    <!-- Logo -->
+    <ImageView
+        android:id="@+id/iv_logo"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:background="@drawable/logo_glow_bg"
+        android:padding="16dp"
+        android:src="@android:drawable/ic_btn_speak_now"
+        android:elevation="8dp"
+        app:tint="@color/white"
+        app:layout_constraintBottom_toBottomOf="@id/ring_outer"
+        app:layout_constraintEnd_toEndOf="@id/ring_outer"
+        app:layout_constraintStart_toStartOf="@id/ring_outer"
+        app:layout_constraintTop_toTopOf="@id/ring_outer" />
 
-    </LinearLayout>
-
+    <!-- App Name -->
     <TextView
         android:id="@+id/tv_app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:letterSpacing="0.1"
+        android:letterSpacing="0.14"
         android:text="SAMVAAD"
         android:textColor="@color/white"
         android:textSize="48sp"
@@ -45,28 +59,31 @@
         app:layout_constraintBottom_toTopOf="@id/tv_tagline"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ll_logo" />
+        app:layout_constraintTop_toBottomOf="@id/ring_outer" />
 
+    <!-- Tagline -->
     <TextView
         android:id="@+id/tv_tagline"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="48dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="10dp"
         android:gravity="center"
+        android:letterSpacing="0.04"
         android:text="Your Digital Proctor for Confident Communication"
-        android:textColor="@color/text_secondary"
-        android:textSize="18sp"
+        android:textColor="@color/teal_accent"
+        android:textSize="14sp"
         app:layout_constraintBottom_toTopOf="@id/ll_loading"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_app_name" />
 
+    <!-- Animated loading dots -->
     <LinearLayout
         android:id="@+id/ll_loading"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
+        android:layout_marginBottom="60dp"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -74,26 +91,25 @@
         app:layout_constraintTop_toBottomOf="@id/tv_tagline">
 
         <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_margin="4dp"
-            android:background="@drawable/card_background"
-            android:backgroundTint="@color/primary_blue" />
-
-        <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_margin="4dp"
-            android:background="@drawable/card_background"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_margin="5dp"
+            android:background="@drawable/glow_ring"
             android:backgroundTint="@color/primary_purple" />
 
         <View
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_margin="4dp"
-            android:background="@drawable/card_background"
-            android:backgroundTint="@color/primary_blue" />
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_margin="5dp"
+            android:background="@drawable/glow_ring"
+            android:backgroundTint="@color/teal_accent" />
 
+        <View
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_margin="5dp"
+            android:background="@drawable/glow_ring"
+            android:backgroundTint="@color/primary_purple" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -30,10 +30,9 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.navigation_scenarios) {
                 selectedFragment = new ScenariosFragment();
             } else if (itemId == R.id.navigation_session) {
+                // If they explicitly tap the Session tab, we can route them back to the old fragment so they see it.
                 selectedFragment = new SessionFragment();
             } else if (itemId == R.id.navigation_stats) {
-                selectedFragment = new StatsFragment();
-            } else if (itemId == R.id.navigation_logs) {
                 selectedFragment = new LogsFragment();
             } else if (itemId == R.id.navigation_profile) {
                 selectedFragment = new ProfileFragment();
@@ -49,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Initial Auth Check
         checkUserStatus();
+        handleIntentRouting();
     }
 
     private void checkUserStatus() {
@@ -75,5 +75,30 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
         // Optional: Select Home in Bottom Nav
         bottomNav.setSelectedItemId(R.id.navigation_home);
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntentRouting();
+    }
+
+    private void handleIntentRouting() {
+        android.content.Intent intent = getIntent();
+        if ("ACTION_SHOW_STATS".equals(intent.getAction())) {
+            bottomNav.setVisibility(View.VISIBLE);
+            bottomNav.setSelectedItemId(R.id.navigation_stats);
+            
+            StatsFragment statsFragment = new StatsFragment();
+            Bundle bundle = new Bundle();
+            SessionMetrics metrics = intent.getParcelableExtra("SESSION_METRICS");
+            bundle.putParcelable("SESSION_METRICS", metrics);
+            statsFragment.setArguments(bundle);
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, statsFragment)
+                    .commit();
+        }
     }
 }

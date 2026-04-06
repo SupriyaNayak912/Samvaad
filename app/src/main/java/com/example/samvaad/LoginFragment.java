@@ -4,39 +4,57 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
+
+import com.example.samvaad.databinding.FragmentLoginBinding;
+import com.example.samvaad.ui.base.BaseFragment;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
 
-public class LoginFragment extends Fragment {
+public class LoginFragment extends BaseFragment<FragmentLoginBinding> {
 
     private static final int RC_SIGN_IN = 9001;
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
-    private TextInputEditText etEmail, etPassword;
 
-    @Nullable
+    @NonNull
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_login, container, false);
+    protected FragmentLoginBinding inflateBinding(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, boolean attachToRoot) {
+        return FragmentLoginBinding.inflate(inflater, container, attachToRoot);
+    }
 
+    @Override
+    protected void setupUI() {
         mAuth = FirebaseAuth.getInstance();
-        etEmail = view.findViewById(R.id.et_email);
-        etPassword = view.findViewById(R.id.et_password);
+
+        // ── Entrance animations ──────────────────────────────────────────
+        Animation slideUpLogo = AnimationUtils.loadAnimation(requireContext(), R.anim.slide_up_fade_in);
+        Animation slideUpCard = AnimationUtils.loadAnimation(requireContext(), R.anim.slide_up_card);
+        Animation pulse       = AnimationUtils.loadAnimation(requireContext(), R.anim.pulse);
+
+        getBinding().ringOuter.startAnimation(slideUpLogo);
+        getBinding().ringMid.startAnimation(slideUpLogo);
+        getBinding().ivLogo.startAnimation(slideUpLogo);
+        getBinding().tvAppName.startAnimation(slideUpLogo);
+        getBinding().tvTagline.startAnimation(slideUpLogo);
+        getBinding().cardLogin.startAnimation(slideUpCard);
+
+        // Continuous pulse on logo glow
+        getBinding().ivLogo.startAnimation(pulse);
+        // ────────────────────────────────────────────────────────────────
 
         // Configure Google Sign In
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -47,34 +65,32 @@ public class LoginFragment extends Fragment {
         mGoogleSignInClient = GoogleSignIn.getClient(requireActivity(), gso);
 
         // Google Login
-        view.findViewById(R.id.btn_google_login).setOnClickListener(v -> signInWithGoogle());
+        getBinding().btnGoogleLogin.setOnClickListener(v -> signInWithGoogle());
 
         // Email Login
-        view.findViewById(R.id.btn_login).setOnClickListener(v -> loginWithEmail());
+        getBinding().btnLogin.setOnClickListener(v -> loginWithEmail());
 
         // Navigate to Signup
-        view.findViewById(R.id.tv_signup).setOnClickListener(v -> {
-            if (getFragmentManager() != null) {
-                getFragmentManager().beginTransaction()
+        getBinding().tvSignup.setOnClickListener(v -> {
+            if (getParentFragmentManager() != null) {
+                getParentFragmentManager().beginTransaction()
                         .replace(R.id.fragment_container, new SignupFragment())
                         .addToBackStack(null)
                         .commit();
             }
         });
-
-        return view;
     }
 
     private void loginWithEmail() {
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+        String email = getBinding().etEmail.getText().toString().trim();
+        String password = getBinding().etPassword.getText().toString().trim();
 
         if (TextUtils.isEmpty(email)) {
-            etEmail.setError("Email is required");
+            getBinding().etEmail.setError("Email is required");
             return;
         }
         if (TextUtils.isEmpty(password)) {
-            etPassword.setError("Password is required");
+            getBinding().etPassword.setError("Password is required");
             return;
         }
 
@@ -83,7 +99,7 @@ public class LoginFragment extends Fragment {
                     if (task.isSuccessful()) {
                         updateUI(mAuth.getCurrentUser());
                     } else {
-                        Toast.makeText(getContext(), "Login failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        showError("Login failed: " + (task.getException() != null ? task.getException().getMessage() : ""));
                     }
                 });
     }
@@ -103,7 +119,7 @@ public class LoginFragment extends Fragment {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
                 firebaseAuthWithGoogle(account.getIdToken());
             } catch (ApiException e) {
-                Toast.makeText(getContext(), "Google sign in failed", Toast.LENGTH_SHORT).show();
+                showError("Google sign in failed");
             }
         }
     }
@@ -115,7 +131,7 @@ public class LoginFragment extends Fragment {
                     if (task.isSuccessful()) {
                         updateUI(mAuth.getCurrentUser());
                     } else {
-                        Toast.makeText(getContext(), "Authentication Failed.", Toast.LENGTH_SHORT).show();
+                        showError("Authentication Failed.");
                     }
                 });
     }

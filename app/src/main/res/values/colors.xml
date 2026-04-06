@@ -4,24 +4,46 @@
     <color name="white">#FFFFFFFF</color>
 
     <!-- Primary Colors -->
-    <color name="bg_start">#0F172A</color>
-    <color name="bg_end">#310D59</color>
+    <color name="bg_start">#0A0F24</color>
+    <color name="bg_end">#1A0533</color>
     <color name="primary_blue">#3B82F6</color>
     <color name="primary_purple">#8B5CF6</color>
+    <color name="primary_purple_dark">#6D28D9</color>
+    <color name="primary_container">#3D1FA3</color>
+    <color name="on_primary_container">#E8DEFF</color>
+    
+    <color name="teal_accent">#00BFA5</color>
+    <color name="secondary_container">#003731</color>
+    <color name="on_secondary_container">#70EFDE</color>
+    
+    <color name="tertiary_container">#0A2472</color>
+    <color name="on_tertiary_container">#D6E4FF</color>
 
-    <!-- Surface Colors -->
-    <color name="card_bg">#1A2235</color>
-    <color name="card_stroke">#2D3748</color>
+    <color name="nav_active">#00BFA5</color>
+    <color name="nav_inactive">#9CA3AF</color>
+    <color name="samvaad_surface_card">#1A1D36</color>
+    
+    <!-- Surface Colors — unified dark system -->
+    <color name="card_surface">#161B35</color>
+    <color name="card_stroke">#553C6BE0</color>
+    <color name="input_surface">#0F132A</color>
+    <color name="input_stroke_idle">#334D6BE0</color>
+    <!-- Legacy aliases kept for other screens -->
+    <color name="card_bg">#161B35</color>
+    <color name="card_stroke_legacy">#2D3748</color>
+    <color name="input_bg">#0F132A</color>
 
-    <!-- Text Colors -->
+    <!-- Text Colors — all high-contrast on dark -->
     <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#94A3B8</color>
+    <color name="text_secondary">#B0BEC5</color>
+    <color name="text_hint">#78909C</color>
 
     <!-- Status Colors -->
     <color name="status_green">#10B981</color>
     <color name="status_red">#EF4444</color>
     <color name="status_orange">#F59E0B</color>
 
-    <color name="google_btn_bg">#FFFFFF</color>
-    <color name="google_btn_text">#1F2937</color>
+    <!-- Google button — dark grey so it sits in the dark card -->
+    <color name="google_btn_bg">#252D4A</color>
+    <color name="google_btn_text">#FFFFFF</color>
 </resources>
