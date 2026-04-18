@@ -27,6 +27,8 @@ public class StatsFragment extends Fragment {
     private TextView tvInsightTip;
     private TextView tvScorePace, tvScoreResilience, tvScorePresence;
     private LineChart chartVolume;
+    private android.widget.VideoView videoPlayback;
+    private android.widget.ProgressBar pbVideoLoading;
 
     @Nullable
     @Override
@@ -40,6 +42,8 @@ public class StatsFragment extends Fragment {
         tvScoreResilience = view.findViewById(R.id.tv_score_resilience);
         tvScorePresence = view.findViewById(R.id.tv_score_presence);
         chartVolume = view.findViewById(R.id.chart_volume);
+        videoPlayback = view.findViewById(R.id.video_playback);
+        pbVideoLoading = view.findViewById(R.id.pb_video_loading);
 
         view.findViewById(R.id.btn_done_stats).setOnClickListener(v -> {
             // Re-route to home via MainActivity
@@ -49,49 +53,59 @@ public class StatsFragment extends Fragment {
         });
 
         Bundle args = getArguments();
-        if (args != null && args.containsKey("SESSION_METRICS")) {
+        if (args != null && args.containsKey("SESSION_ID")) {
+            int sessionId = args.getInt("SESSION_ID");
+            loadSessionFromDatabase(sessionId);
+        } else if (args != null && args.containsKey("SESSION_METRICS")) {
             SessionMetrics metrics = args.getParcelable("SESSION_METRICS");
-            calculateGlobalScore(metrics);
+            displayMetrics(metrics);
         } else {
-            // Mock Data for direct navigation testing
-            SessionMetrics mock = new SessionMetrics();
-            mock.avgWpm = 145f;
-            mock.chaosDistractionCount = 1;
-            mock.recoveryTimeMs = 1200;
-            mock.postureStability = 0.85f;
-            mock.fillerWordCount = 2;
-            for(int i=0; i<30; i++) mock.amplitudeTimeline.add((float)(-40 + Math.random()*20));
-            calculateGlobalScore(mock);
+            // Mock Data
+            displayMetrics(createMockMetrics());
         }
 
         return view;
     }
 
+    private void loadSessionFromDatabase(int id) {
+        SessionMetrics session = MockDatabase.getSessionById(id);
+        if (session != null) {
+            displayMetrics(session);
+        }
+    }
+
+    private void displayMetrics(SessionMetrics metrics) {
+        calculateGlobalScore(metrics);
+        setupVideoPlayback(metrics.videoFilePath);
+    }
+
+    private SessionMetrics createMockMetrics() {
+        SessionMetrics mock = new SessionMetrics();
+        mock.avgWpm = 145f;
+        mock.chaosDistractionCount = 1;
+        mock.recoveryTimeMs = 1200;
+        mock.postureStability = 0.85f;
+        mock.fillerWordCount = 2;
+        for(int i=0; i<30; i++) mock.amplitudeTimeline.add((float)(-40 + Math.random()*20));
+        return mock;
+    }
+
     private void calculateGlobalScore(SessionMetrics metrics) {
-        // 1. Pace Score (30%)
-        // 100 if 130-150. Deduct 2 for every 5 wpm outside.
-        float paceScore = 100f;
-        if (metrics.avgWpm < 130) {
-            paceScore -= ((130 - metrics.avgWpm) / 5f) * 2f;
-        } else if (metrics.avgWpm > 150) {
-            paceScore -= ((metrics.avgWpm - 150) / 5f) * 2f;
+        // Reuse existing logic but ensure it uses clarityScore/paceScore if they exist
+        float paceScore = (metrics.paceScore > 0) ? metrics.paceScore : 100f;
+        if (metrics.paceScore <= 0) {
+            if (metrics.avgWpm < 130) paceScore -= ((130 - metrics.avgWpm) / 5f) * 2f;
+            else if (metrics.avgWpm > 150) paceScore -= ((metrics.avgWpm - 150) / 5f) * 2f;
         }
         paceScore = Math.max(0, Math.min(100, paceScore));
 
-        // 2. Resilience Score (40%)
-        // Start 100. Deduct 10 for every chaos event > 3000ms recovery.
-        // If recoveryTimeMs is the average, we can simulate by checking if average > 3000ms.
         float resilienceScore = 100f;
-        if (metrics.recoveryTimeMs > 3000) {
-            resilienceScore -= (metrics.chaosDistractionCount * 10);
-        }
+        if (metrics.recoveryTimeMs > 3000) resilienceScore -= (metrics.chaosDistractionCount * 10);
         resilienceScore = Math.max(0, Math.min(100, resilienceScore));
 
-        // 3. Presence Score (30%)
-        float presenceScore = metrics.postureStability * 100f;
+        float presenceScore = (metrics.clarityScore > 0) ? metrics.clarityScore : (metrics.postureStability * 100f);
 
-        // Global Score
-        float globalScore = (paceScore * 0.3f) + (resilienceScore * 0.4f) + (presenceScore * 0.3f);
+        float globalScore = (metrics.overallScore > 0) ? metrics.overallScore : (paceScore * 0.3f) + (resilienceScore * 0.4f) + (presenceScore * 0.3f);
 
         // Save score for HomeFragment
         android.content.SharedPreferences prefs = requireContext().getSharedPreferences("SamvaadPrefs", android.content.Context.MODE_PRIVATE);
@@ -155,5 +169,46 @@ public class StatsFragment extends Fragment {
         lineData.setDrawValues(false);
         chartVolume.setData(lineData);
         chartVolume.invalidate();
+    }
+
+    private void setupVideoPlayback(String path) {
+        if (path == null || path.isEmpty()) {
+            if (getView() != null) {
+                View card = getView().findViewById(R.id.card_video_playback);
+                if (card != null) card.setVisibility(View.GONE);
+            }
+            return;
+        }
+
+        java.io.File file = new java.io.File(path);
+        if (!file.exists()) {
+            if (getView() != null) {
+                View card = getView().findViewById(R.id.card_video_playback);
+                if (card != null) card.setVisibility(View.GONE);
+            }
+            return;
+        }
+
+        pbVideoLoading.setVisibility(View.VISIBLE);
+        videoPlayback.setVideoPath(path);
+        
+        android.widget.MediaController mediaController = new android.widget.MediaController(requireContext());
+        mediaController.setAnchorView(videoPlayback);
+        videoPlayback.setMediaController(mediaController);
+
+        videoPlayback.setOnPreparedListener(mp -> {
+            pbVideoLoading.setVisibility(View.GONE);
+            mp.setLooping(true);
+            videoPlayback.start();
+        });
+
+        videoPlayback.setOnErrorListener((mp, what, extra) -> {
+            pbVideoLoading.setVisibility(View.GONE);
+            if (getView() != null) {
+                View card = getView().findViewById(R.id.card_video_playback);
+                if (card != null) card.setVisibility(View.GONE);
+            }
+            return true;
+        });
     }
 }

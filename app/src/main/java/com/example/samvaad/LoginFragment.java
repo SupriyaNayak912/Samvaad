@@ -95,13 +95,13 @@ public class LoginFragment extends BaseFragment<FragmentLoginBinding> {
         }
 
         mAuth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(requireActivity(), task -> {
+                .addOnCompleteListener(requireActivity(), task -> runWithBinding(binding -> {
                     if (task.isSuccessful()) {
                         updateUI(mAuth.getCurrentUser());
                     } else {
                         showError("Login failed: " + (task.getException() != null ? task.getException().getMessage() : ""));
                     }
-                });
+                }));
     }
 
     private void signInWithGoogle() {
@@ -117,9 +117,14 @@ public class LoginFragment extends BaseFragment<FragmentLoginBinding> {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account.getIdToken());
+                if (account != null) {
+                    firebaseAuthWithGoogle(account.getIdToken());
+                } else {
+                    showError("Google Sign-In failed: No account data.");
+                }
             } catch (ApiException e) {
-                showError("Google sign in failed");
+                // If the user cancelled, e.getStatusCode() == GoogleSignInStatusCodes.SIGN_IN_CANCELLED
+                showError("Google sign in failed: " + e.getMessage());
             }
         }
     }
@@ -127,13 +132,13 @@ public class LoginFragment extends BaseFragment<FragmentLoginBinding> {
     private void firebaseAuthWithGoogle(String idToken) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(requireActivity(), task -> {
+                .addOnCompleteListener(requireActivity(), task -> runWithBinding(binding -> {
                     if (task.isSuccessful()) {
                         updateUI(mAuth.getCurrentUser());
                     } else {
                         showError("Authentication Failed.");
                     }
-                });
+                }));
     }
 
     private void updateUI(FirebaseUser user) {

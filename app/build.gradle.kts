@@ -27,8 +27,14 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
     }
     
     buildFeatures {
@@ -60,6 +66,7 @@ dependencies {
     implementation(libs.camera.core)
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)
+    implementation(libs.camera.video)
     implementation(libs.camera.view)
 
     // ML Kit Face Detection
@@ -72,4 +79,7 @@ dependencies {
     // Charting & Data Visualizations (Analytics Engine)
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     implementation("com.mikhaellopez:circularprogressbar:3.1.0")
+
+    // Background Tasks
+    implementation(libs.work.runtime)
 }

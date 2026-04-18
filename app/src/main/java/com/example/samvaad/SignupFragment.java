@@ -4,21 +4,20 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
 
+import com.example.samvaad.databinding.FragmentSignupBinding;
+import com.example.samvaad.ui.base.BaseFragment;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -26,27 +25,24 @@ import com.google.firebase.auth.GoogleAuthProvider;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-public class SignupFragment extends Fragment {
+public class SignupFragment extends BaseFragment<FragmentSignupBinding> {
 
     private static final int RC_SIGN_IN = 9001;
     private GoogleSignInClient mGoogleSignInClient;
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-    private TextInputEditText etName, etEmail, etPassword;
 
-    @Nullable
+    @NonNull
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_signup, container, false);
+    protected FragmentSignupBinding inflateBinding(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, boolean attachToRoot) {
+        return FragmentSignupBinding.inflate(inflater, container, attachToRoot);
+    }
 
+    @Override
+    protected void setupUI() {
         // Initialize Firebase
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
-
-        // Initialize UI Elements
-        etName = view.findViewById(R.id.et_name);
-        etEmail = view.findViewById(R.id.et_email);
-        etPassword = view.findViewById(R.id.et_password);
 
         // Configure Google Sign In
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -56,59 +52,61 @@ public class SignupFragment extends Fragment {
         mGoogleSignInClient = GoogleSignIn.getClient(requireActivity(), gso);
 
         // Button Listeners
-        view.findViewById(R.id.btn_signup).setOnClickListener(v -> registerUser());
+        getBinding().btnSignup.setOnClickListener(v -> registerUser());
 
-        // ADD THIS: Google Sign-Up Listener
-        view.findViewById(R.id.btn_google_signup).setOnClickListener(v -> {
+        // Google Sign-Up Listener
+        getBinding().btnGoogleSignup.setOnClickListener(v -> {
             Intent signInIntent = mGoogleSignInClient.getSignInIntent();
             startActivityForResult(signInIntent, RC_SIGN_IN);
         });
 
-        view.findViewById(R.id.tv_login).setOnClickListener(v -> {
+        getBinding().tvLogin.setOnClickListener(v -> {
             if (getParentFragmentManager() != null) {
                 getParentFragmentManager().beginTransaction()
                         .replace(R.id.fragment_container, new LoginFragment())
                         .commit();
             }
         });
-
-        return view;
     }
 
     // --- EMAIL REGISTRATION LOGIC ---
     private void registerUser() {
-        String name = etName.getText().toString().trim();
-        String email = etEmail.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+        String name = getBinding().etName.getText().toString().trim();
+        String email = getBinding().etEmail.getText().toString().trim();
+        String password = getBinding().etPassword.getText().toString().trim();
 
         if (TextUtils.isEmpty(name)) {
-            etName.setError("Name is required");
+            getBinding().etName.setError("Name is required");
             return;
         }
         if (TextUtils.isEmpty(email)) {
-            etEmail.setError("Email is required");
+            getBinding().etEmail.setError("Email is required");
             return;
         }
         if (TextUtils.isEmpty(password) || password.length() < 6) {
-            etPassword.setError("Password must be at least 6 characters");
+            getBinding().etPassword.setError("Password must be at least 6 characters");
             return;
         }
 
         mAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(requireActivity(), task -> {
+                .addOnCompleteListener(requireActivity(), task -> runWithBinding(binding -> {
                     if (task.isSuccessful()) {
                         FirebaseUser firebaseUser = mAuth.getCurrentUser();
                         if (firebaseUser != null) {
                             UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                                     .setDisplayName(name)
                                     .build();
-                            firebaseUser.updateProfile(profileUpdates);
-                            saveUserToFirestore(name, email, firebaseUser.getUid());
+                            
+                            // Chain the Firestore save after profile update
+                            firebaseUser.updateProfile(profileUpdates)
+                                    .addOnCompleteListener(profileTask -> {
+                                        saveUserToFirestore(name, email, firebaseUser.getUid());
+                                    });
                         }
                     } else {
-                        Toast.makeText(getContext(), "Registration failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        showError("Registration failed: " + (task.getException() != null ? task.getException().getMessage() : "Unknown error"));
                     }
-                });
+                }));
     }
 
     // --- GOOGLE REGISTRATION LOGIC ---
@@ -119,9 +117,11 @@ public class SignupFragment extends Fragment {
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
-                firebaseAuthWithGoogle(account.getIdToken());
+                if (account != null) {
+                    firebaseAuthWithGoogle(account.getIdToken());
+                }
             } catch (ApiException e) {
-                Toast.makeText(getContext(), "Google sign up failed", Toast.LENGTH_SHORT).show();
+                showError("Google sign up failed: " + e.getMessage());
             }
         }
     }
@@ -129,27 +129,27 @@ public class SignupFragment extends Fragment {
     private void firebaseAuthWithGoogle(String idToken) {
         AuthCredential credential = GoogleAuthProvider.getCredential(idToken, null);
         mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(requireActivity(), task -> {
+                .addOnCompleteListener(requireActivity(), task -> runWithBinding(binding -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null) {
                             saveUserToFirestore(user.getDisplayName(), user.getEmail(), user.getUid());
                         }
                     } else {
-                        Toast.makeText(getContext(), "Authentication Failed.", Toast.LENGTH_SHORT).show();
+                        showError("Authentication Failed.");
                     }
-                });
+                }));
     }
 
-    // Helper to save data (Experiment 11 requirement)
+    // Helper to save data
     private void saveUserToFirestore(String name, String email, String uid) {
         User newUser = new User(name, email, "Engineering Student");
         db.collection("users").document(uid).set(newUser)
-                .addOnSuccessListener(aVoid -> {
+                .addOnSuccessListener(aVoid -> runWithBinding(binding -> {
                     if (getActivity() instanceof MainActivity) {
                         ((MainActivity) getActivity()).onLoginSuccess();
                     }
-                })
-                .addOnFailureListener(e -> Toast.makeText(getContext(), "Failed to save user data", Toast.LENGTH_SHORT).show());
+                }))
+                .addOnFailureListener(e -> showError("Failed to save user data."));
     }
 }

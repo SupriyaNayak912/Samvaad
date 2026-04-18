@@ -51,20 +51,20 @@ public class HomeFragment extends BaseFragment<FragmentHomeBinding> {
         if (firebaseUser != null) {
             com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 .collection("users").document(firebaseUser.getUid()).get()
-                .addOnSuccessListener(documentSnapshot -> {
+                .addOnSuccessListener(documentSnapshot -> runWithBinding(binding -> {
                     if (documentSnapshot.exists()) {
                         User user = documentSnapshot.toObject(User.class);
                         if (user != null) {
                             String fName = user.getName() != null ? user.getName() : "there";
                             // Use short name or first word 
                             if (fName.contains(" ")) fName = fName.substring(0, fName.indexOf(" "));
-                            getBinding().tvUserName.setText(fName + " 👋");
-                            getBinding().tvStreak.setText(user.getPracticeStreak() + " Days");
+                            binding.tvUserName.setText(fName + " 👋");
+                            binding.tvStreak.setText(user.getPracticeStreak() + " Days");
                         }
                     } else {
-                        getBinding().tvUserName.setText("there 👋");
+                        binding.tvUserName.setText("there 👋");
                     }
-                });
+                }));
         }
     }
 

@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
                 // If they explicitly tap the Session tab, we can route them back to the old fragment so they see it.
                 selectedFragment = new SessionFragment();
             } else if (itemId == R.id.navigation_stats) {
-                selectedFragment = new LogsFragment();
+                selectedFragment = new SessionHistoryFragment();
             } else if (itemId == R.id.navigation_profile) {
                 selectedFragment = new ProfileFragment();
             }
@@ -89,11 +89,14 @@ public class MainActivity extends AppCompatActivity {
         if ("ACTION_SHOW_STATS".equals(intent.getAction())) {
             bottomNav.setVisibility(View.VISIBLE);
             bottomNav.setSelectedItemId(R.id.navigation_stats);
-            
             StatsFragment statsFragment = new StatsFragment();
             Bundle bundle = new Bundle();
-            SessionMetrics metrics = intent.getParcelableExtra("SESSION_METRICS");
-            bundle.putParcelable("SESSION_METRICS", metrics);
+            if (intent.hasExtra("SESSION_ID")) {
+                bundle.putInt("SESSION_ID", intent.getIntExtra("SESSION_ID", -1));
+            } else {
+                SessionMetrics metrics = intent.getParcelableExtra("SESSION_METRICS");
+                bundle.putParcelable("SESSION_METRICS", metrics);
+            }
             statsFragment.setArguments(bundle);
 
             getSupportFragmentManager().beginTransaction()

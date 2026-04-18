@@ -19,6 +19,30 @@
             android:orientation="vertical"
             android:padding="24dp">
 
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_video_playback"
+                android:layout_width="match_parent"
+                android:layout_height="250dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="8dp"
+                app:cardBackgroundColor="#000000">
+
+                <VideoView
+                    android:id="@+id/video_playback"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center" />
+                    
+                <ProgressBar
+                    android:id="@+id/pb_video_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+            </androidx.cardview.widget.CardView>
+
             <!-- Title -->
             <TextView
                 android:layout_width="match_parent"
@@ -66,7 +90,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Pro-Score"
+                        android:text="Overall Score"
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -197,7 +221,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Presence"
+                            android:text="Clarity"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
                         <TextView
