@@ -17,18 +17,21 @@ import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.widget.Toast;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.samvaad.databinding.ActivityLiveSessionBinding;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -72,6 +75,12 @@ import androidx.camera.video.Quality;
 import androidx.camera.video.FallbackStrategy;
 import androidx.camera.core.UseCaseGroup;
 import com.example.samvaad.SessionMetrics;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class LiveSessionActivity extends AppCompatActivity implements TextToSpeech.OnInitListener, SensorEventListener {
 
@@ -101,11 +110,20 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
     private AudioRecord audioRecord;
     private ExecutorService audioExecutor;
     private volatile boolean monitoringAudio  = false;
+    private volatile boolean isAiSpeaking     = false;
     private static final int SAMPLE_RATE      = 44100;
     private static final int SILENCE_DB       = -48;      // more sensitive to low speech
-    private static final long SILENCE_TIMEOUT = 5500L;     // 5.5 s silence → next question
+    private static final long SILENCE_TIMEOUT = 4500L;     // 4.5 s silence → next question (Hands-Free)
     private long silenceStartMs               = -1;
     private int fillerWordsCount              = 0;
+    
+    // ── File Transcription (Whisper API) ───────────────────────────
+    private File wavFile;
+    private RandomAccessFile wavAccessFile;
+    private long wavPayloadSize = 0;
+
+    private List<QnAPair> sessionTranscript = new ArrayList<>();
+    private int lastSavedQuestionIndex = -1; 
     private long speechBurstStartMs           = -1;
 
     // ─── Analytics Metrics ───────────────────────────────────────────
@@ -114,11 +132,13 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
     private int chaosDistractionCount = 0;
     private ArrayList<Float> amplitudeTimeline = new ArrayList<>();
     private long lastTimelineUpdateMs = 0;
+    private long lastQuestionLevelSwitchMs = 0;
+    private final ArrayList<Float> sessionAmplitudeHistory = new ArrayList<>();
 
     // ─── Timers & Handlers ───────────────────────────────────────────
     private Handler mainHandler    = new Handler(Looper.getMainLooper());
     private CountDownTimer questionTimer;
-    private static final int QUESTION_DURATION_SEC = 90;  // 90 s per question
+    private int questionDurationSec = 90;  // Dynamically adjusted (90s default, 60s drill)
 
     // Chaos Handler
     private Handler chaosHandler   = new Handler(Looper.getMainLooper());
@@ -168,9 +188,69 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         setupGestures();
 
         loadScenarioFromIntent();
+        resetSessionData();
         initTts();
         setupPreFlight();
         initSensors();
+        setupDraggablePiP();
+    }
+
+    private void resetSessionData() {
+        sessionTranscript.clear();
+        amplitudeTimeline.clear();
+        sessionAmplitudeHistory.clear();
+        silenceCount = 0;
+        fillerWordsCount = 0;
+        chaosDistractionCount = 0;
+        totalFaceChecks = 0;
+        successfulFaceChecks = 0;
+        currentQuestionIndex = 0;
+        isAiSpeaking = false;
+        wavPayloadSize = 0;
+        if (wavFile != null && wavFile.exists()) {
+            wavFile.delete();
+        }
+    }
+
+    private void setupDraggablePiP() {
+        // Initial setup matching the Pre-Flight placeholder
+        binding.cardCameraContainer.post(() -> {
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            float density = getResources().getDisplayMetrics().density;
+
+            // Pre-flight size: Match the XML placeholder (approx 250dp height)
+            ViewGroup.LayoutParams lp = binding.cardCameraContainer.getLayoutParams();
+            lp.width = (int) (screenWidth - (48 * density)); // 24dp margins
+            lp.height = (int) (250 * density);
+            binding.cardCameraContainer.setLayoutParams(lp);
+            
+            // Position at original placeholder spot
+            binding.cardCameraContainer.setX(24 * density);
+            binding.cardCameraContainer.setY(binding.viewCameraPlaceholder.getY() + (56 * density)); // adjust for top padding
+        });
+
+        binding.cardCameraContainer.setOnTouchListener(new View.OnTouchListener() {
+            private float dX, dY;
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = view.getX() - event.getRawX();
+                        dY = view.getY() - event.getRawY();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        view.animate()
+                                .x(event.getRawX() + dX)
+                                .y(event.getRawY() + dY)
+                                .setDuration(0)
+                                .start();
+                        break;
+                    default:
+                        return false;
+                }
+                return true;
+            }
+        });
     }
 
     private void initSensors() {
@@ -250,6 +330,50 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         });
     }
 
+    private void initWavFile() {
+        try {
+            wavFile = new java.io.File(getCacheDir(), "session_audio_" + System.currentTimeMillis() + ".wav");
+            if (wavFile.exists()) wavFile.delete();
+            wavAccessFile = new java.io.RandomAccessFile(wavFile, "rw");
+            byte[] header = new byte[44];
+            wavAccessFile.write(header); // Write placeholder header
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateWavHeader() {
+        try {
+            if (wavAccessFile == null) return;
+            long totalAudioLen = wavPayloadSize;
+            long totalDataLen = totalAudioLen + 36;
+            long longSampleRate = SAMPLE_RATE;
+            int channels = 1;
+            long byteRate = 16 * SAMPLE_RATE * channels / 8;
+
+            wavAccessFile.seek(0);
+            byte[] header = new byte[44];
+            header[0] = 'R'; header[1] = 'I'; header[2] = 'F'; header[3] = 'F';
+            header[4] = (byte) (totalDataLen & 0xff); header[5] = (byte) ((totalDataLen >> 8) & 0xff);
+            header[6] = (byte) ((totalDataLen >> 16) & 0xff); header[7] = (byte) ((totalDataLen >> 24) & 0xff);
+            header[8] = 'W'; header[9] = 'A'; header[10] = 'V'; header[11] = 'E';
+            header[12] = 'f'; header[13] = 'm'; header[14] = 't'; header[15] = ' ';
+            header[16] = 16; header[17] = 0; header[18] = 0; header[19] = 0;
+            header[20] = 1; header[21] = 0; header[22] = (byte) channels; header[23] = 0;
+            header[24] = (byte) (longSampleRate & 0xff); header[25] = (byte) ((longSampleRate >> 8) & 0xff);
+            header[26] = (byte) ((longSampleRate >> 16) & 0xff); header[27] = (byte) ((longSampleRate >> 24) & 0xff);
+            header[28] = (byte) (byteRate & 0xff); header[29] = (byte) ((byteRate >> 8) & 0xff);
+            header[30] = (byte) ((byteRate >> 16) & 0xff); header[31] = (byte) ((byteRate >> 24) & 0xff);
+            header[32] = (byte) (2 * 16 / 8); header[33] = 0; header[34] = 16; header[35] = 0;
+            header[36] = 'd'; header[37] = 'a'; header[38] = 't'; header[39] = 'a';
+            header[40] = (byte) (totalAudioLen & 0xff); header[41] = (byte) ((totalAudioLen >> 8) & 0xff);
+            header[42] = (byte) ((totalAudioLen >> 16) & 0xff); header[43] = (byte) ((totalAudioLen >> 24) & 0xff);
+            wavAccessFile.write(header);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -270,20 +394,40 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
     // ────────────────────────────────────────────────────────────────
 
     private void loadScenarioFromIntent() {
-        ArrayList<String> extraQuestions = getIntent().getStringArrayListExtra("EXTRA_QUESTIONS");
-        if (extraQuestions != null && !extraQuestions.isEmpty()) {
+        Intent intent = getIntent();
+        Scenario scenario = (Scenario) intent.getSerializableExtra("scenario");
+        ArrayList<String> extraQuestions = intent.getStringArrayListExtra("EXTRA_QUESTIONS");
+
+        if (scenario != null && scenario.getQuestions() != null && !scenario.getQuestions().isEmpty()) {
+            questions.clear();
+            questions.addAll(scenario.getQuestions());
+            binding.tvScenarioChip.setText(scenario.getCategory() + " · " + scenario.getDifficulty());
+        } else if (extraQuestions != null && !extraQuestions.isEmpty()) {
+            questions.clear();
             questions.addAll(extraQuestions);
-            binding.tvScenarioChip.setText("Custom · Session");
+            String role = intent.getStringExtra("EXTRA_ROLE");
+            if (role != null && !role.isEmpty()) {
+                binding.tvScenarioChip.setText(role + " Interview");
+            } else {
+                binding.tvScenarioChip.setText("Role-Based Interview");
+            }
         } else {
             // Fallback: generic questions
+            questions.clear();
             questions.add("Tell me about yourself and your professional journey.");
             questions.add("What is your greatest strength, and how have you used it?");
             questions.add("Describe a challenge you faced and how you overcame it.");
             binding.tvScenarioChip.setText("General · Default");
         }
-
-        // Shuffle for randomization
-        Collections.shuffle(questions);
+        
+        boolean isDrillMode = intent.getBooleanExtra("isDrillMode", false);
+        if (isDrillMode) {
+            questionDurationSec = 60; // 1-minute drill
+            binding.tvScenarioChip.setText("🔥 1-Min Drill");
+        } else {
+            // Only shuffle for real sessions, Drills have exactly 1 fixed Elevator Pitch question
+            Collections.shuffle(questions);
+        }
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -297,37 +441,117 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            tts.setLanguage(Locale.US);
-            tts.setSpeechRate(0.92f);  // Slightly deliberate — coaching tone
-            tts.setPitch(1.05f);
+            // ── Humanized Voice Selection ─────────────────────────────────
+            // Find the best available high-quality network voice
+            android.speech.tts.Voice bestVoice = null;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                java.util.Set<android.speech.tts.Voice> voices = tts.getVoices();
+                if (voices != null) {
+                    int bestScore = -1;
+                    for (android.speech.tts.Voice v : voices) {
+                        if (!v.isNetworkConnectionRequired()) continue; // prefer network (higher quality)
+                        String name = v.getName().toLowerCase();
+                        int score = 0;
+                        // Prioritise human-sounding locales + quality
+                        if (name.contains("en-gb") || name.contains("en_gb")) score += 8;
+                        else if (name.contains("en-au") || name.contains("en_au")) score += 6;
+                        else if (name.contains("en-in") || name.contains("en_in")) score += 4;
+                        else if (name.contains("en")) score += 2;
+                        score += (v.getQuality() / 100); // 0-5 bonus
+                        if (score > bestScore) { bestScore = score; bestVoice = v; }
+                    }
+                    // Fallback: best non-network en voice
+                    if (bestVoice == null) {
+                        for (android.speech.tts.Voice v : voices) {
+                            String name = v.getName().toLowerCase();
+                            if (name.contains("en") && v.getQuality() >= android.speech.tts.Voice.QUALITY_NORMAL) {
+                                bestVoice = v; break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (bestVoice != null) {
+                tts.setVoice(bestVoice);
+            } else {
+                tts.setLanguage(Locale.UK); // fallback locale with natural intonation
+            }
+            tts.setSpeechRate(0.88f);   // slightly slower = more natural interviewer cadence
+            tts.setPitch(0.97f);         // slightly lower pitch = warmer, less robotic
             tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
+                    isAiSpeaking = true;
                     mainHandler.post(() -> binding.tvAiSpeaking.setVisibility(View.VISIBLE));
                 }
                 @Override public void onDone(String utteranceId) {
+                    isAiSpeaking = false;
                     mainHandler.post(() -> {
                         binding.tvAiSpeaking.setVisibility(View.GONE);
+                        binding.llSoundWave.setVisibility(View.GONE);
+                        stopSoundWaveAnimation();
                         binding.tvSilenceHint.setVisibility(View.VISIBLE);
+                        binding.tvSilenceHint.setText("⏳ Listening...");
                         // Start 4-second grace period before VAD evaluates silence
                         gracePeriodEndMs = System.currentTimeMillis() + 4000L;
                         silenceStartMs = -1;
+                        // Show inline Next button after AI finishes speaking
+                        binding.btnNextQuestion.setVisibility(View.VISIBLE);
                     });
                 }
                 @Override public void onError(String utteranceId) {
+                    isAiSpeaking = false;
                     mainHandler.post(() -> binding.tvAiSpeaking.setVisibility(View.GONE));
                 }
             });
             ttsReady = true;
+
+            // Wire Inline Next Button click → manual skip
+            binding.btnNextQuestion.setOnClickListener(v -> {
+                if (sessionRunning) {
+                    v.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+                    binding.btnNextQuestion.setEnabled(false);
+                    binding.btnNextQuestion.animate().scaleX(0.9f).scaleY(0.9f).setDuration(100).withEndAction(() -> {
+                        binding.btnNextQuestion.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start();
+                    }).start();
+                    // Save current transcript before advancing
+                    saveCurrentAnswer();
+                    advanceQuestion();
+                }
+            });
         }
     }
 
     private void speakQuestion(String text) {
         binding.tvAiSpeaking.setVisibility(View.VISIBLE);
+        binding.llSoundWave.setVisibility(View.VISIBLE);
+        startSoundWaveAnimation();
         binding.tvSilenceHint.setVisibility(View.GONE);
+        // Hide the inline Next button while AI is reading the question out
+        binding.btnNextQuestion.setVisibility(View.INVISIBLE);
+        binding.btnNextQuestion.setEnabled(true);
         if (ttsReady) {
             Bundle params = new Bundle();
             tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, "question_" + currentQuestionIndex);
         }
+    }
+
+    private List<ObjectAnimator> waveAnimators = new ArrayList<>();
+    private void startSoundWaveAnimation() {
+        stopSoundWaveAnimation();
+        for (int i = 0; i < binding.llSoundWave.getChildCount(); i++) {
+            View bar = binding.llSoundWave.getChildAt(i);
+            ObjectAnimator anim = ObjectAnimator.ofFloat(bar, "scaleY", 0.5f, 1.5f);
+            anim.setDuration(300 + (i * 100));
+            anim.setRepeatMode(ObjectAnimator.REVERSE);
+            anim.setRepeatCount(ObjectAnimator.INFINITE);
+            anim.start();
+            waveAnimators.add(anim);
+        }
+    }
+
+    private void stopSoundWaveAnimation() {
+        for (ObjectAnimator anim : waveAnimators) anim.cancel();
+        waveAnimators.clear();
     }
 
     // ─── SENSOR CALLBACKS ───────────────────────────────────────────
@@ -565,6 +789,7 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         sessionRunning    = true;
         sessionStartTime  = System.currentTimeMillis();
         currentQuestionIndex = 0;
+        initWavFile();
         
         // Take Audio Focus to suppress background music
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -573,27 +798,38 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
                     AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE);
         }
 
-        // Animate the Camera to a Picture-in-Picture at the Top Left (Professional Meeting Style)
+        // Animate the Camera to a Picture-in-Picture at the Bottom Right
         androidx.cardview.widget.CardView cameraCard = binding.cardCameraContainer;
         if (cameraCard != null) {
-            float targetScale = 0.32f; 
+            float targetScale = 0.45f; // Increasde size (from 0.32f) for better visibility
             
-            // In Top-Left mode, we pivot at 0,0
             cameraCard.setPivotX(0f);
             cameraCard.setPivotY(0f);
             
-            cameraCard.animate()
-                    .scaleX(targetScale)
-                    .scaleY(targetScale)
-                    .translationX(16f)  // 16dp from left
-                    .translationY(16f)  // 16dp from top
-                    .setDuration(800)
-                    .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
-                    .withStartAction(() -> {
-                        cameraCard.setRadius(200f); // Make it a circle/near-circle bubble
-                        binding.cardCameraContainer.setTranslationY(0); // Reset pre-flight scroll translation
-                    })
-                    .start();
+            cameraCard.post(() -> {
+                int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                int screenHeight = getResources().getDisplayMetrics().heightPixels;
+                
+                float finalWidth = cameraCard.getWidth() * targetScale;
+                float finalHeight = cameraCard.getHeight() * targetScale;
+                
+                // Position bottom-right
+                float targetX = screenWidth - finalWidth - 48f - cameraCard.getLeft();
+                float targetY = screenHeight - finalHeight - 240f - cameraCard.getTop();
+                
+                cameraCard.animate()
+                        .scaleX(targetScale)
+                        .scaleY(targetScale)
+                        .translationX(targetX)  
+                        .translationY(targetY) 
+                        .setDuration(800)
+                        .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                        .withStartAction(() -> {
+                            cameraCard.setRadius(24 * getResources().getDisplayMetrics().density); // subtle rounded corners
+                            binding.cardCameraContainer.setTranslationY(0); 
+                        })
+                        .start();
+            });
         }
 
         // Flip to Phase 2
@@ -610,10 +846,13 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         // Wire Phase 2 buttons
         binding.btnBreathe.setOnClickListener(v -> triggerBreathingExercise());
         binding.btnEndSession.setOnClickListener(v -> confirmEndSession());
-        binding.btnNextQuestion.setOnClickListener(v -> manualSkipQuestion());
-
+        
+        // Hide Next button for "Exact Simulation" feel (advances via silence)
+        binding.btnNextQuestion.setVisibility(View.GONE); 
+        
         startAudioMonitor();
         startWpmTracking();
+
         
         // Start Video Recording
         if (cameraEnabled && videoCapture != null) {
@@ -666,9 +905,10 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
 
         String question = questions.get(index);
         binding.tvQuestionText.setText(question);
-        binding.tvQuestionCounter.setText("Question " + (index + 1) + " of " + questions.size());
-        binding.tvSilenceHint.setVisibility(View.GONE);
-        binding.btnNextQuestion.setEnabled(true);
+        // Progress Update
+        int progressPercent = (int) (((float)(index + 1) / questions.size()) * 100);
+        binding.cpbQuestionProgress.setProgressWithAnimation(progressPercent, 800L);
+        binding.tvQuestionIndexSmall.setText((index + 1) + "/" + questions.size());
 
         // Entrance animation
         binding.cardQuestionVault.setAlpha(0f);
@@ -679,10 +919,10 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
 
         // Reset & start question countdown timer
         if (questionTimer != null) questionTimer.cancel();
-        binding.pbQuestionTimer.setMax(QUESTION_DURATION_SEC);
-        binding.pbQuestionTimer.setProgress(QUESTION_DURATION_SEC);
+        binding.pbQuestionTimer.setMax(questionDurationSec);
+        binding.pbQuestionTimer.setProgress(questionDurationSec);
 
-        questionTimer = new CountDownTimer(QUESTION_DURATION_SEC * 1000L, 1000) {
+        questionTimer = new CountDownTimer(questionDurationSec * 1000L, 1000) {
             @Override public void onTick(long millisUntilFinished) {
                 int remaining = (int) (millisUntilFinished / 1000);
                 binding.pbQuestionTimer.setProgress(remaining);
@@ -694,6 +934,7 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
                 advanceQuestion();
             }
         }.start();
+
     }
 
     private void manualSkipQuestion() {
@@ -702,6 +943,10 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
     }
 
     private void advanceQuestion() {
+        // Essential Logic Fix: Save current response BEFORE moving next!
+        saveCurrentAnswer();
+
+        
         // Play subtle ding
         try {
             android.media.ToneGenerator toneG = new android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 100);
@@ -716,6 +961,7 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         mainHandler.postDelayed(() -> {
             binding.tvSilenceHint.setTextColor(getColor(R.color.text_secondary));
             currentQuestionIndex++;
+            lastQuestionLevelSwitchMs = System.currentTimeMillis(); // Track switch time
             binding.tvSilenceCount.setText(silenceCount + " Pauses");
             showQuestion(currentQuestionIndex);
         }, 1200);
@@ -759,6 +1005,17 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
                 while (monitoringAudio) {
                     int read = audioRecord.read(buffer, 0, buffer.length);
                     if (read > 0) {
+                        if (sessionRunning && wavAccessFile != null && !isAiSpeaking) {
+                            try {
+                                byte[] byteBuffer = new byte[read * 2];
+                                for (int i = 0; i < read; i++) {
+                                    byteBuffer[i * 2] = (byte) (buffer[i] & 0xFF);
+                                    byteBuffer[i * 2 + 1] = (byte) ((buffer[i] >> 8) & 0xFF);
+                                }
+                                wavAccessFile.write(byteBuffer);
+                                wavPayloadSize += byteBuffer.length;
+                            } catch (Exception e) { e.printStackTrace(); }
+                        }
                         double rms = calculateRms(buffer, read);
                         double db  = rmsToDb(rms);
                         int    amp = (int) Math.min(100, Math.max(0, (db + 60) * 1.67)); // map -60..0 dB → 0..100
@@ -780,6 +1037,7 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
                             if (System.currentTimeMillis() - lastTimelineUpdateMs > 1000) {
                                 lastTimelineUpdateMs = System.currentTimeMillis();
                                 amplitudeTimeline.add((float) db);
+                                sessionAmplitudeHistory.add((float) db);
                             }
                         });
                     }
@@ -797,6 +1055,11 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
 
     private void stopAudioMonitor() {
         monitoringAudio = false;
+        try {
+            updateWavHeader();
+            if (wavAccessFile != null) wavAccessFile.close();
+            wavAccessFile = null;
+        } catch (Exception ignored) {}
         if (audioRecord != null) {
             try { audioRecord.stop(); audioRecord.release(); } catch (Exception ignored) {}
             audioRecord = null;
@@ -829,12 +1092,15 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
                 speechBurstStartMs = -1; // Reset burst tracker
             }
 
-            if (silenceStartMs < 0) silenceStartMs = System.currentTimeMillis();
-            else if (System.currentTimeMillis() - silenceStartMs >= SILENCE_TIMEOUT) {
-                silenceStartMs = -1;
-                silenceCount++;
-                advanceQuestion();
-            }
+                if (silenceStartMs < 0) silenceStartMs = System.currentTimeMillis();
+                else if (System.currentTimeMillis() - silenceStartMs >= SILENCE_TIMEOUT) {
+                    silenceStartMs = -1;
+                    silenceCount++;
+                    
+                    // We no longer add directly here. 
+                    // advanceQuestion() will call saveCurrentAnswer() safely.
+                    advanceQuestion();
+                }
         } else {
             silenceStartMs = -1; // reset on any speech
             
@@ -886,10 +1152,13 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
 
                 binding.tvWpm.setText(avgWpm + " WPM");
 
-                if (avgWpm > 160) {
-                    pulseCardOrange();
-                    binding.tvWpm.setTextColor(getColor(R.color.status_orange));
-                } else {
+                // Dynamic coloring for premium feedback (Live Coaching)
+                if (avgWpm > 175) { // Rushing
+                    binding.tvWpm.setTextColor(getColor(R.color.status_red));
+                    pulseCardOrange(); // Visual stress indicator
+                } else if (avgWpm > 130) { // Golden Zone
+                    binding.tvWpm.setTextColor(getColor(R.color.status_green));
+                } else { // Deliberate
                     binding.tvWpm.setTextColor(getColor(R.color.text_secondary));
                 }
 
@@ -933,9 +1202,16 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         long delay = 15_000 + new Random().nextInt(30_000);
         chaosRunnable = () -> {
             if (!sessionRunning || !chaosEnabled) return;
-            playChaosDistraction();
-            // Reschedule
-            scheduleChaosEvent();
+            
+            // Contextual check: don't interrupt right after a question switch (within 5s)
+            long timeSinceSwitch = System.currentTimeMillis() - lastQuestionLevelSwitchMs;
+            if (silenceStartMs < 0 && timeSinceSwitch > 5000) {
+                playChaosDistraction();
+                scheduleChaosEvent(); 
+            } else {
+                // Retry in 3 seconds 
+                chaosHandler.postDelayed(chaosRunnable, 3000);
+            }
         };
         chaosHandler.postDelayed(chaosRunnable, delay);
     }
@@ -943,70 +1219,40 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
     private void playChaosDistraction() {
         chaosStartTime = System.currentTimeMillis();
         
-        // 1. Heartbeat Vibration Effect
-        Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (vibrator != null && vibrator.hasVibrator()) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                // Heartbeat pattern: Wait 0, pulse 50ms, rest 100ms, pulse 50ms, rest 800ms
-                long[] timings = {0, 50, 100, 50, 800, 50, 100, 50, 800};
-                int[] amplitudes = {0, 100, 0, 255, 0, 100, 0, 255, 0};
-                VibrationEffect effect = VibrationEffect.createWaveform(timings, amplitudes, -1);
-                vibrator.vibrate(effect);
-            } else {
-                long[] pattern = {0, 50, 100, 50, 800, 50, 100, 50, 800};
-                vibrator.vibrate(pattern, -1); 
-            }
-        }
-        
-        // 2. Auditory Chaos with native alarm
-        try {
-            android.net.Uri defaultRingtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_ALARM);
-            MediaPlayer mp = MediaPlayer.create(this, defaultRingtoneUri);
-            if (mp != null) {
-                mp.setAudioAttributes(new android.media.AudioAttributes.Builder()
-                        .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build());
-                mp.setOnCompletionListener(media -> media.release());
-                mp.start();
-                mainHandler.postDelayed(() -> {
-                    try { if (mp.isPlaying()) { mp.stop(); mp.release(); } } catch (Exception e) {}
-                }, 3000); // Blast for 3 seconds only
-            }
-        } catch (Exception e) {}
-
-        // 3. TTS Interruptions to break concentration
-        if (ttsReady && tts != null) {
-            String[] distractions = {
-                    "Can you speak up?",
-                    "Wait, let me stop you there.",
-                    "Are you still there?",
-                    "I didn't quite catch that. Keep going."
-            };
-            String distraction = distractions[new Random().nextInt(distractions.length)];
-            tts.speak(distraction, TextToSpeech.QUEUE_FLUSH, null, "ChaosID");
-        }
-
-        // 3. UI Disruption: Glitching timer bar and Screen Flash
-        android.animation.ObjectAnimator glitch = android.animation.ObjectAnimator.ofFloat(binding.pbQuestionTimer, "translationY", 0f, 20f, -20f, 15f, -15f, 0f);
-        glitch.setDuration(400);
-        glitch.start();
-        
-        // 4. Red Visceral Flash Overlay
+        // 1. Flash chaos indicator UI
         mainHandler.post(() -> {
-            binding.viewChaosFlash.setAlpha(1f);
-            binding.viewChaosFlash.animate().alpha(0f).setDuration(800).start();
+            binding.tvChaosIndicator.setText("⚡ Interruption!");
+            binding.tvChaosIndicator.setTextColor(getColor(R.color.status_red));
         });
-        
-        // Flash chaos indicator
-        binding.tvChaosIndicator.setText("⚡ Chaos Triggered!");
-        binding.tvChaosIndicator.setTextColor(getColor(R.color.status_red));
+
         mainHandler.postDelayed(() -> {
             binding.tvChaosIndicator.setText("🔥 Chaos ON");
             binding.tvChaosIndicator.setTextColor(getColor(R.color.status_orange));
             chaosRecoveryTime += System.currentTimeMillis() - chaosStartTime;
             chaosDistractionCount++;
         }, 3000);
+
+        // 2. AI TTS Interruptions to meddle in between
+        if (ttsReady && tts != null) {
+            String[] distractions = {
+                    "Sorry to interrupt, can you elaborate on that?",
+                    "Wait, let me stop you there.",
+                    "Are you sure about that approach?",
+                    "I didn't quite catch that. Keep going.",
+                    "Can we pivot for a second? Nevermind, finish your thought."
+            };
+            String distraction = distractions[new Random().nextInt(distractions.length)];
+            
+            // Flush queue so it interrupts them immediately
+            tts.speak(distraction, TextToSpeech.QUEUE_FLUSH, null, "ChaosID");
+            
+            mainHandler.post(() -> {
+                binding.tvAiSpeaking.setVisibility(View.VISIBLE);
+                binding.tvAiSpeaking.setText("Interviewer interjecting...");
+                binding.llSoundWave.setVisibility(View.VISIBLE);
+                startSoundWaveAnimation();
+            });
+        }
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -1079,6 +1325,8 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         chaosHandler.removeCallbacksAndMessages(null);
         wpmHandler.removeCallbacksAndMessages(null);
 
+        binding.btnNextQuestion.setVisibility(View.GONE);
+
         // Stop Camera to save battery/resources
         try {
             androidx.camera.lifecycle.ProcessCameraProvider.getInstance(this).get().unbindAll();
@@ -1097,78 +1345,240 @@ public class LiveSessionActivity extends AppCompatActivity implements TextToSpee
         // Switch to Phase 3 (Results)
         binding.viewFlipper.setDisplayedChild(2);
 
-        // Wire Return Home -> Analytics Engine
-        binding.btnReturnHome.setOnClickListener(v -> {
-            float postureStability = totalFaceChecks > 0 ? ((float) successfulFaceChecks / totalFaceChecks) : 1f;
-            long avgRecoveryMs = chaosDistractionCount > 0 ? (chaosRecoveryTime / chaosDistractionCount) : 0;
-            
-            SessionMetrics metrics = new SessionMetrics();
-            metrics.avgWpm = avgWpm;
-            metrics.chaosDistractionCount = chaosDistractionCount;
-            metrics.recoveryTimeMs = avgRecoveryMs;
-            metrics.postureStability = postureStability;
-            metrics.fillerWordCount = fillerWordsCount;
-            metrics.amplitudeTimeline = amplitudeTimeline;
-            metrics.videoFilePath = (currentVideoPath != null) ? currentVideoPath : "";
-            Log.d("SamvaadVideo", "Session Ended. Video Path: " + metrics.videoFilePath);
-            metrics.scenarioTitle = binding.tvScenarioChip.getText().toString();
-            metrics.timestamp = System.currentTimeMillis();
-            metrics.durationSeconds = totalTimeSeconds;
-            
-            // Compute Global Score to persist
-            float paceScoreVal = 100f;
-            if (avgWpm < 130) paceScoreVal -= ((130 - avgWpm) / 5f) * 2f;
-            else if (avgWpm > 150) paceScoreVal -= ((avgWpm - 150) / 5f) * 2f;
-            paceScoreVal = Math.max(0, Math.min(100, paceScoreVal));
+        // Switch to Phase 3 (Results)
+        binding.viewFlipper.setDisplayedChild(2);
+        binding.btnReturnHome.setEnabled(false);
+        binding.btnReturnHome.setText("Preparing Transcripts...");
 
-            float resilienceScoreVal = 100f;
-            if (avgRecoveryMs > 3000) resilienceScoreVal -= (chaosDistractionCount * 10);
-            resilienceScoreVal = Math.max(0, Math.min(100, resilienceScoreVal));
+        // Layer 6: AI-Powered Analysis
+        float postureStability = totalFaceChecks > 0 ? ((float) successfulFaceChecks / totalFaceChecks) : 1f;
+        SessionMetrics metrics = new SessionMetrics();
+        metrics.avgWpm = avgWpm;
+        metrics.chaosDistractionCount = chaosDistractionCount;
+        metrics.recoveryTimeMs = chaosDistractionCount > 0 ? (chaosRecoveryTime / chaosDistractionCount) : 0;
+        metrics.postureStability = postureStability;
+        metrics.fillerWordCount = fillerWordsCount;
+        metrics.silenceCount = silenceCount;
+        metrics.totalFaceChecks = totalFaceChecks;
+        metrics.successfulFaceChecks = successfulFaceChecks;
+        metrics.transcript = sessionTranscript;
+        metrics.scenarioTitle = binding.tvScenarioChip.getText().toString();
+        metrics.timestamp = System.currentTimeMillis();
+        metrics.durationSeconds = totalTimeSeconds;
+        metrics.chaosEnabled = chaosEnabled;
+        metrics.videoFilePath = currentVideoPath;
+        metrics.amplitudeTimeline = new ArrayList<>(sessionAmplitudeHistory);
+        
+        metrics.targetRole = getIntent().hasExtra("EXTRA_ROLE") ? getIntent().getStringExtra("EXTRA_ROLE") : "General Practice";
+        metrics.sessionGoal = getIntent().hasExtra("EXTRA_GOAL") ? getIntent().getStringExtra("EXTRA_GOAL") : "Interview Prep";
+        metrics.sessionMode = getIntent().hasExtra("EXTRA_MODE") ? getIntent().getStringExtra("EXTRA_MODE") : (getIntent().getBooleanExtra("isDrillMode", false) ? "drill" : "vault");
 
-            float presenceScoreVal = postureStability * 100f;
-            float globalScoreVal = (paceScoreVal * 0.3f) + (resilienceScoreVal * 0.4f) + (presenceScoreVal * 0.3f);
-            
-            metrics.overallScore = globalScoreVal;
-            metrics.paceScore = paceScoreVal;
-            metrics.clarityScore = presenceScoreVal;
-            
-            // Push to Mock Database (In-Memory)
-            metrics.id = MockDatabase.sessionHistory.size() + 1;
-            MockDatabase.sessionHistory.add(metrics);
+        // 1. Local Math Calculation
+        ScoreResult scores = ScoringEngine.calculate(metrics);
+        
+        // 2. AI Coaching Analysis (Whisper + Llama 3)
+        saveCurrentAnswer(); // Capture last response before analysis!
+        uploadToWhisper(metrics, scores);
+    }
 
-            // Trigger Background Task (Exp: Notifications & WorkManager)
-            OneTimeWorkRequest syncRequest = new OneTimeWorkRequest.Builder(SessionWorker.class).build();
-            WorkManager.getInstance(this).enqueue(syncRequest);
+    private void uploadToWhisper(SessionMetrics metrics, ScoreResult scores) {
+        binding.tvResultsTitle.setText("Transcribing Audio...");
+        binding.tvResultsWpm.setText("Groq Whisper is converting your speech to text.");
+        binding.tvResultsPauses.setText("This guarantees perfect analysis.");
+        binding.tvResultsFillers.setText("Please wait 3-5 seconds...");
+        
+        if (wavFile == null || !wavFile.exists()) {
+            runLlama3Analysis(metrics, scores, ""); 
+            return;
+        }
 
-            // Push to Firebase Session Logs (Legacy Support)
-            com.google.firebase.auth.FirebaseUser user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
-            if (user != null) {
-                java.util.Map<String, Object> log = new java.util.HashMap<>();
-                log.put("uid", user.getUid());
-                log.put("scenario_title", metrics.scenarioTitle);
-                log.put("timestamp", metrics.timestamp);
-                log.put("duration_total_seconds", totalTimeSeconds);
-                log.put("global_score", globalScoreVal);
-                log.put("avg_wpm", avgWpm);
-                log.put("chaos_count", chaosDistractionCount);
-                log.put("filler_words", fillerWordsCount);
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                        .collection("session_logs")
-                        .add(log);
+        RequestBody requestFile = RequestBody.create(MediaType.parse("audio/wav"), wavFile);
+        MultipartBody.Part body = MultipartBody.Part.createFormData("file", wavFile.getName(), requestFile);
+        RequestBody model = RequestBody.create(MediaType.parse("text/plain"), "whisper-large-v3-turbo");
+        RequestBody format = RequestBody.create(MediaType.parse("text/plain"), "json");
+
+        GroqApiClient.getApiService().transcribeAudio(body, model, format)
+            .enqueue(new Callback<GroqApiClient.WhisperResponse>() {
+                @Override
+                public void onResponse(Call<GroqApiClient.WhisperResponse> call, Response<GroqApiClient.WhisperResponse> response) {
+                    String transcript = "";
+                    if (response.isSuccessful() && response.body() != null) {
+                        transcript = response.body().text;
+                        Log.d("SamvaadWhisper", "Transcription success: " + transcript);
+                    } else {
+                        Log.e("SamvaadWhisper", "Transcription failed. Code: " + response.code());
+                    }
+                    runLlama3Analysis(metrics, scores, transcript);
+                }
+
+                @Override
+                public void onFailure(Call<GroqApiClient.WhisperResponse> call, Throwable t) {
+                    Log.e("SamvaadWhisper", "Network error reaching Whisper API", t);
+                    runLlama3Analysis(metrics, scores, ""); 
+                }
+            });
+    }
+
+    private void runLlama3Analysis(SessionMetrics metrics, ScoreResult scores, String transcript) {
+        binding.tvResultsTitle.setText("Evaluating Responses...");
+        binding.tvResultsWpm.setText("Llama-3-70B is analyzing your performance...");
+        binding.tvResultsPauses.setText("Contextualizing WPM, Filler usage & Composure.");
+        binding.tvResultsFillers.setText("");
+        
+        SessionSummary summary = SessionSummary.from(metrics, scores, "current_user_uid");
+        summary.masterTranscript = transcript;
+        
+        LlmFeedbackEngine.generateFeedback(summary, new LlmFeedbackEngine.FeedbackCallback() {
+            @Override
+            public void onSuccess(LlmFeedback feedback) {
+                binding.tvResultsTitle.setText("AI Coaching Summary");
+                binding.tvResultsDuration.setText("Overall SRI: " + feedback.getOverallScore() + "/100");
+                binding.tvResultsWpm.setText(feedback.getSummary());
+
+                // Populate Strengths (Vertical Insight Cards)
+                if (feedback.getStrengths() != null && !feedback.getStrengths().isEmpty()) {
+                    FeedbackCarouselAdapter strengthsAdapter = new FeedbackCarouselAdapter(feedback.getStrengths(), "🌟");
+                    binding.rvStrengths.setAdapter(strengthsAdapter);
+                    binding.tvStrengthsLabel.setVisibility(View.VISIBLE);
+                    binding.rvStrengths.setVisibility(View.VISIBLE);
+                } else {
+                    binding.tvStrengthsLabel.setVisibility(View.GONE);
+                    binding.rvStrengths.setVisibility(View.GONE);
+                }
+
+                // Populate Focus Areas (Vertical Insight Cards)
+                java.util.List<String> focusAreas = new java.util.ArrayList<>();
+                if (feedback.getAreasToImprove() != null) focusAreas.addAll(feedback.getAreasToImprove());
+                if (feedback.getCoachingTip() != null) focusAreas.add("TIP: " + feedback.getCoachingTip());
+
+                if (!focusAreas.isEmpty()) {
+                    FeedbackCarouselAdapter focusAdapter = new FeedbackCarouselAdapter(focusAreas, "🎯");
+                    binding.rvFocusAreas.setAdapter(focusAdapter);
+                    binding.tvFocusLabel.setVisibility(View.VISIBLE);
+                    binding.rvFocusAreas.setVisibility(View.VISIBLE);
+                } else {
+                    binding.tvFocusLabel.setVisibility(View.GONE);
+                    binding.rvFocusAreas.setVisibility(View.GONE);
+                }
+
+                // Populate Question-wise Breakdown
+                if (feedback.getQuestionAnalysis() != null && !feedback.getQuestionAnalysis().isEmpty()) {
+                    binding.tvBreakdownLabel.setVisibility(View.VISIBLE);
+                    binding.rvQuestionBreakdown.setVisibility(View.VISIBLE);
+                    QuestionAnalysisAdapter qaAdapter = new QuestionAnalysisAdapter(feedback.getQuestionAnalysis());
+                    binding.rvQuestionBreakdown.setAdapter(qaAdapter);
+                } else {
+                    binding.tvBreakdownLabel.setVisibility(View.GONE);
+                    binding.rvQuestionBreakdown.setVisibility(View.GONE);
+                }
+                
+                binding.btnReturnHome.setEnabled(true);
+                binding.btnReturnHome.setText("Finish & Save");
+                
+                binding.btnReturnHome.setOnClickListener(v -> {
+                    binding.btnReturnHome.setEnabled(false);
+                    metrics.llmFeedback = feedback;
+                    // UNIFY SCORES: Overwrite local math entirely with AI generated scores
+                    metrics.overallScore = feedback.getOverallScore();
+                    metrics.paceScore = feedback.getPaceScore();
+                    metrics.clarityScore = feedback.getClarityScore();
+
+                    android.content.SharedPreferences prefs = getSharedPreferences("SamvaadPrefs", MODE_PRIVATE);
+                    float oldBest = prefs.getFloat("latest_global_score", 0f);
+                    LevelSystem.Level oldLevel = LevelSystem.getLevelForScore(oldBest);
+                    LevelSystem.Level newLevel = LevelSystem.getLevelForScore(feedback.getOverallScore());
+
+                    if (newLevel.id > oldLevel.id) {
+                        new LevelUpBottomSheet(newLevel, () -> {
+                            saveSessionAndFinish(metrics);
+                        }).show(getSupportFragmentManager(), "LevelUp");
+                    } else {
+                        saveSessionAndFinish(metrics);
+                    }
+
+                    if (feedback.getOverallScore() > oldBest) {
+                        prefs.edit().putFloat("latest_global_score", (float)feedback.getOverallScore()).apply();
+                    }
+                });
             }
-            
-            android.content.Intent intent = new android.content.Intent(this, MainActivity.class);
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            intent.putExtra("SESSION_METRICS", metrics);
-            intent.setAction("ACTION_SHOW_STATS");
-            startActivity(intent);
-            finish();
+
+            @Override
+            public void onFailure(Exception e) {
+                if (isFinishing()) return;
+                binding.tvResultsWpm.setText("AI Analysis timed out. Technical metrics are still available.");
+                binding.btnReturnHome.setEnabled(true);
+                binding.btnReturnHome.setText("Save (Metrics Only)");
+                binding.btnReturnHome.setOnClickListener(v -> {
+                    // Even without AI, we save what we know (Pace, Silence, Chaos)
+                    saveSessionAndFinish(metrics);
+                });
+            }
         });
     }
+
+    private void saveSessionAndFinish(SessionMetrics metrics) {
+        androidx.appcompat.app.AlertDialog progressDialog = new androidx.appcompat.app.AlertDialog.Builder(this, R.style.CustomAlertDialog)
+                .setTitle("Finalizing Session")
+                .setMessage("Uploading your performance analysis to the cloud...")
+                .setCancelable(false)
+                .create();
+        progressDialog.show();
+
+        SessionRepository.saveSession(metrics, new SessionRepository.SessionCallback() {
+            @Override
+            public void onSuccess(String id) {
+                if (isFinishing()) return;
+                progressDialog.dismiss();
+                purgeLocalVideo();
+                finish();
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                if (isFinishing()) return;
+                progressDialog.dismiss();
+                
+                new androidx.appcompat.app.AlertDialog.Builder(LiveSessionActivity.this, R.style.CustomAlertDialog)
+                    .setTitle("Cloud Sync Failed")
+                    .setMessage("We couldn't reach the database. Would you like to try again or discard this session?")
+                    .setPositiveButton("Retry", (dialog, which) -> saveSessionAndFinish(metrics))
+                    .setNegativeButton("Discard", (dialog, which) -> {
+                        purgeLocalVideo();
+                        finish();
+                    })
+                    .setCancelable(false)
+                    .show();
+            }
+        });
+    }
+
+    private void purgeLocalVideo() {
+        // Delete massive storage consumption
+        if (currentVideoPath != null) {
+            java.io.File file = new java.io.File(currentVideoPath);
+            if (file.exists()) {
+                file.delete();
+            }
+        }
+        if (wavFile != null && wavFile.exists()) {
+            wavFile.delete();
+        }
+    }
+
 
     // ────────────────────────────────────────────────────────────────
     //  IMMERSIVE MODE
     // ────────────────────────────────────────────────────────────────
+
+    private void saveCurrentAnswer() {
+        if (questions != null && currentQuestionIndex < questions.size()) {
+            if (currentQuestionIndex == lastSavedQuestionIndex) return; // Prevent duplicates
+            
+            String qText = questions.get(currentQuestionIndex);
+            sessionTranscript.add(new QnAPair(qText, "[Transcribed via Whisper]"));
+            lastSavedQuestionIndex = currentQuestionIndex;
+        }
+    }
 
     private void enableImmersiveMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

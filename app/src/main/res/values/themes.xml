@@ -65,6 +65,20 @@
 
     </style>
 
+    <style name="CustomAlertDialog" parent="Theme.Material3.DayNight.Dialog.Alert">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:background">#1A1D36</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="buttonBarPositiveButtonStyle">@style/AlertButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/AlertButtonStyle</item>
+    </style>
+
+    <style name="AlertButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/teal_accent</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="Theme.Samvaad" parent="Base.Theme.Samvaad" />
 
     <style name="ShapeSmall" parent="ShapeAppearance.Material3.SmallComponent">
@@ -75,6 +89,17 @@
     </style>
     <style name="ShapeLarge" parent="ShapeAppearance.Material3.LargeComponent">
         <item name="cornerSize">18dp</item>
+    </style>
+
+    <style name="CustomBottomSheetDialogTheme" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/CustomBottomSheetStyle</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="CustomBottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@android:color/transparent</item>
     </style>
 
 </resources>

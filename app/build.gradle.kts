@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.services)
@@ -15,6 +18,16 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Expose Groq API key to the app safely via BuildConfig
+        var groqKey = ""
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            val localProperties = Properties()
+            localProperties.load(FileInputStream(localPropertiesFile))
+            groqKey = localProperties.getProperty("GROQ_API_KEY") ?: ""
+        }
+        buildConfigField("String", "GROQ_API_KEY", "\"$groqKey\"")
     }
 
     buildTypes {
@@ -39,6 +52,7 @@ android {
     
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -82,4 +96,10 @@ dependencies {
 
     // Background Tasks
     implementation(libs.work.runtime)
+
+    // Logging
+    implementation(libs.okhttp.logging)
+
+    // Guava (Async callbacks)
+    implementation("com.google.guava:guava:33.2.1-android")
 }

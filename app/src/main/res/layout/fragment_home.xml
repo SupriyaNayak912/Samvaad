@@ -73,24 +73,67 @@
             app:layout_constraintEnd_toStartOf="@id/card_streak"
             app:layout_constraintTop_toBottomOf="@id/tv_welcome_back" />
 
-        <!-- ─── PRIMARY CTA ─────────────────────────────────────────── -->
-        <com.example.samvaad.ui.components.LlmCustomButton
-            android:id="@+id/btn_start_session"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="22dp"
-            android:text="  Start New Session"
-            android:textAllCaps="false"
-            android:textColor="@color/white"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:elevation="10dp"
-            app:backgroundTint="@color/primary_purple"
-            app:cornerRadius="18dp"
-            app:icon="@android:drawable/ic_media_play"
-            app:iconGravity="textStart"
-            app:iconTint="@color/white"
+        <!-- Dynamic inspirational tagline -->
+        <TextView
+            android:id="@+id/tv_tagline"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Let's build confidence today ✨"
+            android:textColor="@color/teal_accent"
+            android:textSize="13sp"
+            android:fontFamily="sans-serif-light"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/card_streak"
             app:layout_constraintTop_toBottomOf="@id/tv_user_name" />
+
+        <!-- ─── PRIMARY CTA ─────────────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/ll_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:orientation="horizontal"
+            app:layout_constraintTop_toBottomOf="@id/tv_tagline">
+
+            <!-- Start New Session (Full) -->
+            <com.example.samvaad.ui.components.LlmCustomButton
+                android:id="@+id/btn_start_session"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="60dp"
+                android:layout_marginEnd="8dp"
+                android:text="Start New Session"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:elevation="10dp"
+                app:backgroundTint="@color/primary_purple"
+                app:cornerRadius="18dp"
+                app:icon="@android:drawable/ic_media_play"
+                app:iconGravity="textStart"
+                app:iconTint="@color/white" />
+
+            <!-- Daily Drill (Short) -->
+            <com.example.samvaad.ui.components.LlmCustomButton
+                android:id="@+id/btn_daily_drill"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="60dp"
+                android:layout_marginStart="8dp"
+                android:text="1-Min Drill"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:elevation="10dp"
+                app:backgroundTint="@color/status_orange"
+                app:cornerRadius="18dp"
+                app:icon="@android:drawable/ic_menu_today"
+                app:iconGravity="textStart"
+                app:iconTint="@color/white" />
+        </LinearLayout>
 
         <!-- ─── INSIGHT CARD ───────────────────────────────────────── -->
         <com.example.samvaad.ui.components.GlassmorphismContainer
@@ -101,7 +144,7 @@
             android:background="@drawable/card_background"
             android:padding="20dp"
             android:elevation="10dp"
-            app:layout_constraintTop_toBottomOf="@id/btn_start_session">
+            app:layout_constraintTop_toBottomOf="@id/ll_actions">
 
             <!-- Teal accent bar -->
             <View
@@ -113,13 +156,13 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
-            <!-- Stability score -->
+            <!-- Interview Readiness Index -->
             <TextView
                 android:id="@+id/tv_stability_score"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="14dp"
-                android:text="87.5%"
+                android:text="--%"
                 android:textColor="@color/primary_purple"
                 android:textSize="36sp"
                 android:textStyle="bold"
@@ -127,12 +170,15 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
+                android:id="@+id/tv_iri_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="14dp"
-                android:text="Stability Score"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
+                android:text="Interview Readiness Index ⓘ"
+                android:textColor="@color/teal_accent"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
                 app:layout_constraintStart_toEndOf="@id/bar_insight"
                 app:layout_constraintTop_toBottomOf="@id/tv_stability_score" />
 
@@ -203,16 +249,28 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/rv_recommended" />
 
+        <!-- ─── LEVEL ROADMAP SECTION ─── -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_roadmap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:nestedScrollingEnabled="false"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_constraintTop_toBottomOf="@id/tv_progress_label"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
         <!-- Sessions Completed Card -->
         <com.example.samvaad.ui.components.GlassmorphismContainer
             android:id="@+id/card_sessions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:background="@drawable/card_background"
             android:padding="18dp"
             android:elevation="8dp"
-            app:layout_constraintTop_toBottomOf="@id/tv_progress_label">
+            app:layout_constraintTop_toBottomOf="@id/rv_roadmap">
 
             <View
                 android:id="@+id/icon_sessions"
@@ -225,38 +283,53 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
-                android:id="@+id/tv_sessions_label"
+                android:id="@+id/tv_metrics_label"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="14dp"
-                android:text="Sessions Completed"
+                android:text="Total Practice Time"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
-                app:layout_constraintEnd_toStartOf="@id/tv_sessions_trend"
+                app:layout_constraintEnd_toStartOf="@id/tv_growth_trend"
                 app:layout_constraintStart_toEndOf="@id/icon_sessions"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
+                android:id="@+id/tv_metrics_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="24"
+                android:text="--h --m"
                 android:textColor="@color/text_primary"
                 android:textSize="22sp"
                 android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="@id/tv_sessions_label"
-                app:layout_constraintTop_toBottomOf="@id/tv_sessions_label" />
+                app:layout_constraintStart_toStartOf="@id/tv_metrics_label"
+                app:layout_constraintTop_toBottomOf="@id/tv_metrics_label" />
 
             <TextView
-                android:id="@+id/tv_sessions_trend"
+                android:id="@+id/tv_growth_trend"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="↑ This week"
+                android:text="--% Growth"
                 android:textColor="@color/status_green"
-                android:textSize="12sp"
+                android:textSize="14sp"
                 android:textStyle="bold"
+                android:gravity="end"
+                app:layout_constraintBottom_toTopOf="@id/tv_growth_basis"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_chainStyle="packed" />
+
+            <TextView
+                android:id="@+id/tv_growth_basis"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="(vs last 3 sessions)"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:gravity="end"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toBottomOf="@id/tv_growth_trend" />
 
         </com.example.samvaad.ui.components.GlassmorphismContainer>
 

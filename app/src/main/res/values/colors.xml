@@ -6,6 +6,7 @@
     <!-- Primary Colors -->
     <color name="bg_start">#0A0F24</color>
     <color name="bg_end">#1A0533</color>
+    <color name="bg_dark">#06081A</color>
     <color name="primary_blue">#3B82F6</color>
     <color name="primary_purple">#8B5CF6</color>
     <color name="primary_purple_dark">#6D28D9</color>
@@ -42,6 +43,11 @@
     <color name="status_green">#10B981</color>
     <color name="status_red">#EF4444</color>
     <color name="status_orange">#F59E0B</color>
+    
+    <!-- Glow Colors for Telemetry -->
+    <color name="glow_green">#3310B981</color>
+    <color name="glow_red">#33EF4444</color>
+    <color name="glow_purple">#338B5CF6</color>
 
     <!-- Google button — dark grey so it sits in the dark card -->
     <color name="google_btn_bg">#252D4A</color>

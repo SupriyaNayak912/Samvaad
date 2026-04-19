@@ -78,8 +78,22 @@ public class CreateScenarioBottomSheet extends BottomSheetDialogFragment {
             );
             scenario.setQuestions(questions);
 
-            if (listener != null) listener.onScenarioCreated(scenario);
-            dismiss();
+            // Persist to Cloud
+            ScenarioRepository.saveCustomScenario(scenario, new ScenarioRepository.ScenarioCallback() {
+                @Override
+                public void onSuccess(String id) {
+                    if (listener != null) listener.onScenarioCreated(scenario);
+                    dismiss();
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    // Fallback to local only if cloud fails
+                    if (listener != null) listener.onScenarioCreated(scenario);
+                    dismiss();
+                    Toast.makeText(getContext(), "Saved locally (Sync pending)", Toast.LENGTH_SHORT).show();
+                }
+            });
         });
     }
 

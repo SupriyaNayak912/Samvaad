@@ -143,7 +143,7 @@ public class SignupFragment extends BaseFragment<FragmentSignupBinding> {
 
     // Helper to save data
     private void saveUserToFirestore(String name, String email, String uid) {
-        User newUser = new User(name, email, "Engineering Student");
+        User newUser = new User(name, email, "Future Leader / Tech Aspirant");
         db.collection("users").document(uid).set(newUser)
                 .addOnSuccessListener(aVoid -> runWithBinding(binding -> {
                     if (getActivity() instanceof MainActivity) {

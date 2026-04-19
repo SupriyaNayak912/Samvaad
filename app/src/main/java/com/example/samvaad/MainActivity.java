@@ -29,9 +29,17 @@ public class MainActivity extends AppCompatActivity {
                 selectedFragment = new HomeFragment();
             } else if (itemId == R.id.navigation_scenarios) {
                 selectedFragment = new ScenariosFragment();
+            } else if (itemId == R.id.navigation_roadmap) {
+                selectedFragment = new RoadmapFragment();
             } else if (itemId == R.id.navigation_session) {
-                // If they explicitly tap the Session tab, we can route them back to the old fragment so they see it.
-                selectedFragment = new SessionFragment();
+                SessionChoiceBottomSheet bottomSheet = new SessionChoiceBottomSheet(() -> {
+                    VaultCategoryBottomSheet catSheet = new VaultCategoryBottomSheet((category, difficulty) -> {
+                        switchToVaultTab(category, difficulty);
+                    });
+                    catSheet.show(getSupportFragmentManager(), "VaultCategory");
+                });
+                bottomSheet.show(getSupportFragmentManager(), "SessionChoice");
+                return false; 
             } else if (itemId == R.id.navigation_stats) {
                 selectedFragment = new SessionHistoryFragment();
             } else if (itemId == R.id.navigation_profile) {
@@ -68,13 +76,38 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void onLoginSuccess() {
+    public void navigateToHome() {
         bottomNav.setVisibility(View.VISIBLE);
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, new HomeFragment())
                 .commit();
-        // Optional: Select Home in Bottom Nav
         bottomNav.setSelectedItemId(R.id.navigation_home);
+    }
+
+    public void onLoginSuccess() {
+        navigateToHome();
+    }
+
+    private String pendingVaultCategory = null;
+    private String pendingVaultDifficulty = null;
+
+    public void switchToVaultTab(String category, String difficulty) {
+        this.pendingVaultCategory = category;
+        this.pendingVaultDifficulty = difficulty;
+        bottomNav.setSelectedItemId(R.id.navigation_scenarios);
+    }
+
+    public String getPendingVaultCategory() {
+        return pendingVaultCategory;
+    }
+
+    public String getPendingVaultDifficulty() {
+        return pendingVaultDifficulty;
+    }
+
+    public void clearPendingVaultConfig() {
+        this.pendingVaultCategory = null;
+        this.pendingVaultDifficulty = null;
     }
 
     @Override
@@ -91,12 +124,13 @@ public class MainActivity extends AppCompatActivity {
             bottomNav.setSelectedItemId(R.id.navigation_stats);
             StatsFragment statsFragment = new StatsFragment();
             Bundle bundle = new Bundle();
-            if (intent.hasExtra("SESSION_ID")) {
-                bundle.putInt("SESSION_ID", intent.getIntExtra("SESSION_ID", -1));
-            } else {
-                SessionMetrics metrics = intent.getParcelableExtra("SESSION_METRICS");
-                bundle.putParcelable("SESSION_METRICS", metrics);
+            
+            if (intent.hasExtra("EXTRA_SESSION_ID")) {
+                bundle.putString("EXTRA_SESSION_ID", intent.getStringExtra("EXTRA_SESSION_ID"));
+            } else if (intent.hasExtra("SESSION_METRICS")) {
+                bundle.putParcelable("SESSION_METRICS", intent.getParcelableExtra("SESSION_METRICS"));
             }
+            
             statsFragment.setArguments(bundle);
 
             getSupportFragmentManager().beginTransaction()

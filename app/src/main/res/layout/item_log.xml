@@ -7,53 +7,117 @@
     android:background="@drawable/card_background"
     android:padding="16dp">
 
+    <!-- Scenario Title -->
     <TextView
         android:id="@+id/tv_log_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Scenario Title"
         android:textColor="@color/text_primary"
-        android:textSize="16sp"
+        android:textSize="17sp"
         android:textStyle="bold"
-        android:maxLines="2"
+        android:maxLines="1"
         android:ellipsize="end"
         android:layout_marginEnd="16dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/fl_score_badge"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_log_duration"
-        android:layout_width="wrap_content"
+    <!-- Metadata Pill Row -->
+    <LinearLayout
+        android:id="@+id/ll_log_metadata"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
         android:layout_marginTop="6dp"
-        android:text="Duration: 00:00"
-        android:textColor="@color/text_secondary"
-        android:textSize="13sp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_log_title" />
+        app:layout_constraintEnd_toStartOf="@id/fl_score_badge"
+        app:layout_constraintTop_toBottomOf="@id/tv_log_title">
+
+        <!-- Role Pill -->
+        <TextView
+            android:id="@+id/tv_log_role_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/chip_unselected_bg"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:text="Software Engineer"
+            android:textColor="@color/teal_accent"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <View android:layout_width="6dp" android:layout_height="1dp" />
+
+        <!-- Mode Pill -->
+        <TextView
+            android:id="@+id/tv_log_mode_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/chip_unselected_bg"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:text="VAULT"
+            android:textColor="@color/primary_purple"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+            
+        <View android:layout_width="6dp" android:layout_height="1dp" />
+
+        <!-- Focus Pill -->
+        <TextView
+            android:id="@+id/tv_log_focus_pill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/chip_unselected_bg"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="3dp"
+            android:text="TECHNICAL"
+            android:textColor="@color/status_orange"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tv_log_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Time"
+        android:text="Oct 19, 2026 · 2:45 AM"
         android:textColor="@color/text_secondary"
         android:textSize="11sp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="8dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_log_duration" />
+        app:layout_constraintTop_toBottomOf="@id/ll_log_metadata" />
 
-    <!-- Teal Circle Badge for Score -->
+    <TextView
+        android:id="@+id/tv_log_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Duration: 02:45"
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:layout_marginStart="12dp"
+        app:layout_constraintStart_toEndOf="@id/tv_log_time"
+        app:layout_constraintTop_toTopOf="@id/tv_log_time" />
+
+    <!-- Achievement Badge (Dynamic Circle) -->
     <FrameLayout
         android:id="@+id/fl_score_badge"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="@drawable/ring_teal"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:padding="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent">
         
+        <!-- Outer Glowing Ring -->
+        <View
+            android:id="@+id/v_badge_glow"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/ring_teal" />
+
+        <!-- Core Score -->
         <TextView
             android:id="@+id/tv_log_score"
             android:layout_width="wrap_content"
@@ -61,8 +125,19 @@
             android:layout_gravity="center"
             android:text="90"
             android:textColor="@color/teal_accent"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
+            
+        <!-- Tier Emoji Indicator (Bottom Right) -->
+        <TextView
+            android:id="@+id/tv_log_tier_icon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="bottom|end"
+            android:text="👑"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:background="@drawable/circle_white" />
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
