@@ -2,6 +2,7 @@ package com.example.samvaad;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -122,24 +123,20 @@ public class ScenariosFragment extends BaseFragment<FragmentScenariosBinding> {
     private void fetchScenarios() {
         getBinding().pbLoading.setVisibility(android.view.View.VISIBLE);
 
-        RetrofitClient.getApiService().getScenarios().enqueue(new Callback<List<Scenario>>() {
+        ScenarioRepository.getStandardScenarios(new ScenarioRepository.ListCallback() {
             @Override
-            public void onResponse(@NonNull Call<List<Scenario>> call,
-                                   @NonNull Response<List<Scenario>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    allScenarios.clear();
-                    allScenarios.addAll(response.body());
-                    fetchCustomScenarios(); // Merge with custom ones
-                } else {
-                    loadPlaceholderData();
-                }
+            public void onSuccess(List<Scenario> scenarios) {
+                allScenarios.clear();
+                allScenarios.addAll(scenarios);
+                fetchCustomScenarios(); // Merge with user's own creations
             }
 
             @Override
-            public void onFailure(@NonNull Call<List<Scenario>> call, @NonNull Throwable t) {
-                showError("Network error — showing cached scenarios");
+            public void onFailure(Exception e) {
+                Log.e("ScenariosFragment", "Error fetching standard scenarios", e);
+                // Fallback to minimal data if Firestore is unreachable
                 loadPlaceholderData();
-                fetchCustomScenarios(); // still try custom ones
+                fetchCustomScenarios();
             }
         });
     }

@@ -57,6 +57,12 @@ public class MainActivity extends AppCompatActivity {
         // Initial Auth Check
         checkUserStatus();
         handleIntentRouting();
+
+        // Initialize Notification Channels for background alerts
+        NotificationHelper.createNotificationChannel(this);
+
+        // Ensure database is seeded with professional content
+        DatabaseSeeder.checkAndSeed(null);
     }
 
     private void checkUserStatus() {
@@ -94,6 +100,10 @@ public class MainActivity extends AppCompatActivity {
     public void switchToVaultTab(String category, String difficulty) {
         this.pendingVaultCategory = category;
         this.pendingVaultDifficulty = difficulty;
+        bottomNav.setSelectedItemId(R.id.navigation_scenarios);
+    }
+
+    public void switchToScenariosTab() {
         bottomNav.setSelectedItemId(R.id.navigation_scenarios);
     }
 

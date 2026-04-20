@@ -77,7 +77,9 @@ public class ProfileFragment extends BaseFragment<FragmentProfileBinding> {
                 runWithBinding(binding -> {
                     List<Long> timestamps = new ArrayList<>();
                     for (SessionMetrics s : sessions) {
-                        timestamps.add(s.timestamp);
+                        if (s.timestamp != null) {
+                            timestamps.add(s.timestamp.getTime());
+                        }
                     }
                     binding.heatmapView.setSessionTimestamps(timestamps);
                 });

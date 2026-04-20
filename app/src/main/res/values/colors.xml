@@ -37,6 +37,7 @@
     <!-- Text Colors — all high-contrast on dark -->
     <color name="text_primary">#FFFFFF</color>
     <color name="text_secondary">#B0BEC5</color>
+    <color name="text_tertiary">#90A4AE</color>
     <color name="text_hint">#78909C</color>
 
     <!-- Status Colors -->

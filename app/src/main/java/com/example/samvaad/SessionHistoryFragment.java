@@ -116,7 +116,11 @@ public class SessionHistoryFragment extends Fragment {
             holder.tvDuration.setText(String.format(Locale.getDefault(), "Duration: %02d:%02d", m, s));
 
             SimpleDateFormat sdf = new SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault());
-            holder.tvTime.setText(sdf.format(new Date(session.timestamp)));
+            if (session.timestamp != null) {
+                holder.tvTime.setText(sdf.format(session.timestamp));
+            } else {
+                holder.tvTime.setText("--");
+            }
 
             // Tier/Badge Logic
             int score = (int) session.overallScore;

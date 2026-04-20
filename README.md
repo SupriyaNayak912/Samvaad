@@ -1,59 +1,59 @@
-# Samvaad AI: Next-Gen Interview Simulator 🚀
+# Samvaad AI: Technical Architecture & Logical Audit
 
-**Samvaad** (Sanskrit for "Dialogue") is a high-fidelity AI-driven interview coach designed to bridge the gap between technical knowledge and professional communication. It leverages state-of-the-art AI models and real-time telemetry to provide a clinical assessment of a candidate's readiness.
-
----
-
-## 🧠 Technical Workflow (The "Engine")
-
-Samvaad operates on a high-premium, 4-stage pipeline that converts raw human interaction into actionable data.
-
-### 1. Real-Time Telemetry & Chaos Injection
-During a live session, the app tracks:
-- **Audio Amplitude**: Real-time energy tracking.
-- **WPM (Words Per Minute)**: Dynamic pacing analysis.
-- **Chaos Mode**: Simulates real-world interview stress by injecting distractions, measuring the candidate's **Resilience Score**.
-
-### 2. Transcription (Groq Whisper)
-At the end of each session, the recorded audio is processed using the **Groq Whisper API**. This provides a 100% accurate, word-for-word transcript that preserves fillers (um, ah) for later analysis.
-
-### 3. AI Cognitive Analysis (Llama-3-70B)
-The transcript and telemetry data are sent to the **Llama-3-70B model**. The AI acts as a "Mock Interviewer" to evaluate:
-- **Pace & Clarity**: Did the candidate speak too fast or mumble?
-- **Behavioral Profile**: Does the candidate use the STAR method?
-- **Question Breakdown**: A clinical, question-by-question critique of what the candidate said vs. what an expert would say.
-
-### 4. Firestore Persistence
-All results are synchronized to **Google Firebase Firestore**. This ensures data parity across devices and a permanent historical record of growth.
+Samvaad is a high-fidelity AI interview simulator designed to eliminate ambiguity in professional performance assessment. This document serves as the **Technical Defense Manual** for academic review, proving the robustness of the backend, database design, and AI-driven evaluation logic.
 
 ---
 
-## 📊 Database Schema (Instructor's Guide)
+## 🏛️ 1. Core Philosophy: "The Strict Auditor"
 
-Our database is designed using a **Clean Architecture Hierarchy** to impress evaluators with its structure and security.
+Unlike basic simulators that use hardcoded math, Samvaad operates on a **Human-like Cognitive Pipeline**. We reject "Simple Leniency." If a candidate fails to participate meaningfully (e.g., provides short, one-word, or nonsense responses like 'booing'), the system is architected to detect this and assign a **Zero Score**.
 
-- **`users/{uid}`**: Root user profile containing metadata (Names, Level, Total XP).
-- **`users/{uid}/sessions`**: A subcollection storing detailed reports.
-  - Each session document contains a nested `llmFeedback` object.
-  - **Zero-Data Loss**: By nesting the AI report within the session document, we minimize DB queries and ensure the report is always available offline through Firebase caching.
-
----
-
-## 🏷️ Key Features for Invigilators
-
-- **Smart Readiness Index (SRI)**: A proprietary 0-100 score calculated by AI based on multi-dimensional performance metrics.
-- **Tiered Badge System**: Users are categorized into **Legend**, **Professional**, or **Apprentice** tiers based on their SRI, driving engagement and self-improvement.
-- **Performance Share**: One-tap "Snapshot" sharing that generates a high-quality visualization of the AI report for social or professional proof.
-- **Immersive 3D/Glassmorphism UI**: A premium design language that moves away from generic Android components to create an elite user experience.
+### 🛡️ AI Truthfulness Guards
+*   **Transcript-Anchored Evaluation**: The LLM (Llama-3-70B) is strictly instructed to evaluate content depth.
+*   **Anti-Hallucination Trigger**: If the transcription from Groq Whisper is empty or nonsensical, the evaluation logic defaults to a "Non-Responsive" state, preventing the AI from generating "fake" encouragement.
 
 ---
 
-## 🛠️ Tech Stack
-- **Frontend**: Java, XML (Custom Glassmorphism components).
-- **AI/LLM**: Llama-3-70B (Groq), Whisper (Groq).
-- **Backend**: Firebase Auth, Firebase Firestore.
-- **Analytics**: MPAndroidChart, Custom Circular Progress Logic.
+## 🏗️ 2. Professional Database Architecture (Elite Sub-DB Schema)
+
+The database is built using a **Hierarchical User-Centric Design** to ensure data locality, rapid access, and professional-grade security. This nested structure is superior to "flat" designs as it natively handles user privacy and query optimization.
+
+### 📋 Unified Path: `/users/{uid}/sessions/`
+Every session is an isolated document containing:
+1.  **Immediate Persistence**: Stored "that very second" the session starts with a `status: IN_PROGRESS` flag. 
+2.  **Telemetry Map**: Raw WPM, Silence Count, Chaos Hits, and Face Stability checks.
+3.  **AI Verdict**: The definitive overall score and blunt feedback.
+4.  **Heatmap Data**: Persistent Tracking of daily activity in `/users/{uid}/stats/heatmap` for historical audits.
 
 ---
 
-*"Master the dialogue, own the room."*
+## 📊 3. Performance Visualization: The Power Radar
+
+The Dashboard features a **Performance Radar Chart**, which is the "Single Source of Truth" for readiness. It distinguishes between:
+*   **Technical Depth**: Derived from the logical substance of the transcript.
+*   **Communication Clarity**: Derived from pacing, filler words, and vocal confidence.
+*   **Presence & Resilience**: Derived from sensor stability and chaos-recovery data.
+
+---
+
+## 🔍 4. Logical Event Audit (The Evidence)
+
+| Event | Logic Location | Database Impact |
+| :--- | :--- | :--- |
+| **Session Init** | `LiveSessionActivity:L901` | **NEW** document created in Firestore immediately. |
+| **Speech Generation**| `LiveSessionActivity:L501` | **PRE-FLIGHT** logic ensures voice engine is initialized. |
+| **AI Analysis** | `LlmFeedbackEngine:L24` | **STRICT** Evaluation: Penalizes empty transcripts. |
+| **Data Finalization**| `SessionRepository:L70` | Updates Draft ⮕ `COMPLETED`; Increments Heatmap. |
+
+---
+
+## 🏛️ 5. Invigilator Defense: Common Technical Queries
+
+**Q: Why use sub-collections for sessions instead of a flat list?**
+**A:** Sub-collections (`/users/uid/sessions`) are optimized for per-user security rules and query speed. It prevents "Mega-Collection" overhead and ensures a student can only access their own data. This is the **Industry Standard** for private metrics.
+
+**Q: How does the app handle network failure during AI analysis?**
+**A:** The app uses a "Retain Draft" strategy. If the analysis fails, the session remains in `IN_PROGRESS` state in Firestore with raw telemetry preserved. This proves the attempt happened even if the network dropped.
+
+**Q: Why is there no "Mathematical Fallback" for scores?**
+**A:** To eliminate ambiguity. A professional interview is a human experience; mathematical heuristics (like simple WPM) are insufficient for a "Verdict." We mandate AI Interpretation to ensure the highest evaluation standards.

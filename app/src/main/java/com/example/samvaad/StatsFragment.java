@@ -99,11 +99,11 @@ public class StatsFragment extends Fragment {
 
     private SessionMetrics createMockMetrics() {
         SessionMetrics mock = new SessionMetrics();
-        mock.avgWpm = 145f;
-        mock.chaosDistractionCount = 1;
-        mock.recoveryTimeMs = 1200;
-        mock.postureStability = 0.85f;
-        mock.fillerWordCount = 2;
+        mock.telemetry.avgWpm = 145f;
+        mock.telemetry.chaosDistractionCount = 1;
+        mock.telemetry.recoveryTimeMs = 1200;
+        mock.telemetry.postureStability = 0.85f;
+        mock.telemetry.fillerWordCount = 2;
         for(int i=0; i<30; i++) mock.amplitudeTimeline.add((float)(-40 + Math.random()*20));
 
         // Mock LLM Feedback for UI testing
