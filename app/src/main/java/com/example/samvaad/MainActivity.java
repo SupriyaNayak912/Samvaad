@@ -29,12 +29,19 @@ public class MainActivity extends AppCompatActivity {
                 selectedFragment = new HomeFragment();
             } else if (itemId == R.id.navigation_scenarios) {
                 selectedFragment = new ScenariosFragment();
+            } else if (itemId == R.id.navigation_roadmap) {
+                selectedFragment = new RoadmapFragment();
             } else if (itemId == R.id.navigation_session) {
-                selectedFragment = new SessionFragment();
+                SessionChoiceBottomSheet bottomSheet = new SessionChoiceBottomSheet(() -> {
+                    VaultCategoryBottomSheet catSheet = new VaultCategoryBottomSheet((category, difficulty) -> {
+                        switchToVaultTab(category, difficulty);
+                    });
+                    catSheet.show(getSupportFragmentManager(), "VaultCategory");
+                });
+                bottomSheet.show(getSupportFragmentManager(), "SessionChoice");
+                return false; 
             } else if (itemId == R.id.navigation_stats) {
-                selectedFragment = new StatsFragment();
-            } else if (itemId == R.id.navigation_logs) {
-                selectedFragment = new LogsFragment();
+                selectedFragment = new SessionHistoryFragment();
             } else if (itemId == R.id.navigation_profile) {
                 selectedFragment = new ProfileFragment();
             }
@@ -49,6 +56,13 @@ public class MainActivity extends AppCompatActivity {
 
         // Initial Auth Check
         checkUserStatus();
+        handleIntentRouting();
+
+        // Initialize Notification Channels for background alerts
+        NotificationHelper.createNotificationChannel(this);
+
+        // Ensure database is seeded with professional content
+        DatabaseSeeder.checkAndSeed(null);
     }
 
     private void checkUserStatus() {
@@ -68,12 +82,70 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void onLoginSuccess() {
+    public void navigateToHome() {
         bottomNav.setVisibility(View.VISIBLE);
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, new HomeFragment())
                 .commit();
-        // Optional: Select Home in Bottom Nav
         bottomNav.setSelectedItemId(R.id.navigation_home);
+    }
+
+    public void onLoginSuccess() {
+        navigateToHome();
+    }
+
+    private String pendingVaultCategory = null;
+    private String pendingVaultDifficulty = null;
+
+    public void switchToVaultTab(String category, String difficulty) {
+        this.pendingVaultCategory = category;
+        this.pendingVaultDifficulty = difficulty;
+        bottomNav.setSelectedItemId(R.id.navigation_scenarios);
+    }
+
+    public void switchToScenariosTab() {
+        bottomNav.setSelectedItemId(R.id.navigation_scenarios);
+    }
+
+    public String getPendingVaultCategory() {
+        return pendingVaultCategory;
+    }
+
+    public String getPendingVaultDifficulty() {
+        return pendingVaultDifficulty;
+    }
+
+    public void clearPendingVaultConfig() {
+        this.pendingVaultCategory = null;
+        this.pendingVaultDifficulty = null;
+    }
+
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntentRouting();
+    }
+
+    private void handleIntentRouting() {
+        android.content.Intent intent = getIntent();
+        if ("ACTION_SHOW_STATS".equals(intent.getAction())) {
+            bottomNav.setVisibility(View.VISIBLE);
+            bottomNav.setSelectedItemId(R.id.navigation_stats);
+            StatsFragment statsFragment = new StatsFragment();
+            Bundle bundle = new Bundle();
+            
+            if (intent.hasExtra("EXTRA_SESSION_ID")) {
+                bundle.putString("EXTRA_SESSION_ID", intent.getStringExtra("EXTRA_SESSION_ID"));
+            } else if (intent.hasExtra("SESSION_METRICS")) {
+                bundle.putParcelable("SESSION_METRICS", intent.getParcelableExtra("SESSION_METRICS"));
+            }
+            
+            statsFragment.setArguments(bundle);
+
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, statsFragment)
+                    .commit();
+        }
     }
 }

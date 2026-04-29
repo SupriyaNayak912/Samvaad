@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glowing logo background - concentric rings effect -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="50%"
+        android:startColor="#BF8B5CF6"
+        android:centerColor="#667C3CE8"
+        android:endColor="#334C1D9A" />
+    <stroke android:width="2dp" android:color="#808B5CF6" />
+</shape>

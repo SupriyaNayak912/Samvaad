@@ -1,50 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Premium vertical scenario card for Vault RecyclerView -->
+<com.example.samvaad.ui.components.GlassmorphismContainer
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
     android:background="@drawable/card_background"
-    android:padding="16dp"
+    android:padding="18dp"
+    android:elevation="8dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
 
+    <!-- Title -->
     <TextView
         android:id="@+id/tv_scenario_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Scenario Title"
+        android:text="Tell me about yourself"
         android:textColor="@color/text_primary"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/iv_arrow"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Difficulty badge -->
     <TextView
         android:id="@+id/tv_difficulty"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/card_background"
-        android:backgroundTint="#064E3B"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="2dp"
-        android:text="Easy"
-        android:textColor="@color/status_green"
-        android:textSize="12sp"
+        android:background="@drawable/badge_beginner"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="3dp"
+        android:text="Beginner"
+        android:textColor="@color/teal_accent"
+        android:textSize="11sp"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_scenario_title" />
 
+    <!-- Metadata row: Questions count + Last score -->
+    <TextView
+        android:id="@+id/tv_metadata"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="5 Questions  ·  Last Score: 82%"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toStartOf="@id/iv_arrow"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_difficulty" />
+
+    <!-- Arrow -->
     <ImageView
         android:id="@+id/iv_arrow"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
         android:src="@android:drawable/ic_media_play"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="@color/text_secondary" />
+        app:tint="@color/primary_purple" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</com.example.samvaad.ui.components.GlassmorphismContainer>

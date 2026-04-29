@@ -1,9 +1,105 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+
     <style name="Base.Theme.Samvaad" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+
+        <!-- ── Core Brand Colors ────────────────────────────────────
+             These override the DayNight defaults while keeping all
+             internal M3 color tokens (colorSecondaryContainer, etc.)
+             properly resolved so BottomNavigationView doesn't crash. -->
+        <item name="colorPrimary">#8B5CF6</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#3D1FA3</item>
+        <item name="colorOnPrimaryContainer">#E8DEFF</item>
+
+        <item name="colorSecondary">#00BFA5</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#003731</item>
+        <item name="colorOnSecondaryContainer">#70EFDE</item>
+
+        <item name="colorTertiary">#3B82F6</item>
+        <item name="colorOnTertiary">#FFFFFF</item>
+        <item name="colorTertiaryContainer">#0A2472</item>
+        <item name="colorOnTertiaryContainer">#D6E4FF</item>
+
+        <!-- ── Surfaces ─────────────────────────────────────────── -->
+        <item name="colorSurface">#1A1D36</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        <item name="colorSurfaceVariant">#1A1D36</item>
+        <item name="colorOnSurfaceVariant">#9CA3AF</item>
+        <item name="colorSurfaceContainer">#161B35</item>
+        <item name="colorSurfaceContainerHigh">#1E2340</item>
+        <item name="colorSurfaceContainerHighest">#0F132A</item>
+
+        <!-- ── Background ────────────────────────────────────────── -->
+        <item name="colorOnBackground">#FFFFFF</item>
+        <item name="android:colorBackground">#0A0F24</item>
+        <item name="android:windowBackground">#0A0F24</item>
+
+        <!-- ── Outline ───────────────────────────────────────────── -->
+        <item name="colorOutline">#334D6BE0</item>
+        <item name="colorOutlineVariant">#22FFFFFF</item>
+
+        <!-- ── Error ─────────────────────────────────────────────── -->
+        <item name="colorError">#EF4444</item>
+        <item name="colorOnError">#FFFFFF</item>
+
+        <!-- ── Text ──────────────────────────────────────────────── -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_hint</item>
+
+        <!-- ── System Bars ───────────────────────────────────────── -->
+        <item name="android:statusBarColor">#0A0F24</item>
+        <item name="android:navigationBarColor">#0A0F24</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">false</item>
+
+        <!-- ── Ripple ─────────────────────────────────────────────── -->
+        <item name="colorControlHighlight">#228B5CF6</item>
+        <item name="rippleColor">#228B5CF6</item>
+
+        <!-- ── Shapes ─────────────────────────────────────────────── -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeSmall</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeMedium</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeLarge</item>
+
+    </style>
+
+    <style name="CustomAlertDialog" parent="Theme.Material3.DayNight.Dialog.Alert">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:background">#1A1D36</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="buttonBarPositiveButtonStyle">@style/AlertButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/AlertButtonStyle</item>
+    </style>
+
+    <style name="AlertButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/teal_accent</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="Theme.Samvaad" parent="Base.Theme.Samvaad" />
+
+    <style name="ShapeSmall" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerSize">10dp</item>
+    </style>
+    <style name="ShapeMedium" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerSize">14dp</item>
+    </style>
+    <style name="ShapeLarge" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerSize">18dp</item>
+    </style>
+
+    <style name="CustomBottomSheetDialogTheme" parent="Theme.Design.Light.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/CustomBottomSheetStyle</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <style name="CustomBottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+
 </resources>
