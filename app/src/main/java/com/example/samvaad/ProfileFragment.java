@@ -56,6 +56,14 @@ public class ProfileFragment extends BaseFragment<FragmentProfileBinding> {
     }
 
     private void fetchUserProfile(String uid) {
+        FirebaseUser firebaseUser = mAuth.getCurrentUser();
+        if (firebaseUser != null) {
+            tvName.setText(firebaseUser.getDisplayName() != null ? firebaseUser.getDisplayName() : "User");
+            tvEmail.setText(firebaseUser.getEmail());
+            tvRole.setText("Learner");
+            tvStreak.setText("0 days");
+        }
+
         db.collection("users").document(uid).get()
                 .addOnSuccessListener(documentSnapshot -> runWithBinding(binding -> {
                     if (documentSnapshot.exists()) {

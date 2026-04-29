@@ -1,0 +1,429 @@
+{
+  "info": {
+    "name": "Samvaad Backend API",
+    "description": "Complete API collection for Samvaad backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Verify Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-token",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-token"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"bio\": \"Software Engineer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Get Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/stats",
+              "host": ["{{base_url}}"],
+              "path": ["users", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Scenarios",
+      "item": [
+        {
+          "name": "Get All Scenarios",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/scenarios?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["scenarios"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "category",
+                  "value": "Behavioral",
+                  "disabled": true
+                },
+                {
+                  "key": "difficulty",
+                  "value": "Easy",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Random Scenario",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/scenarios/random",
+              "host": ["{{base_url}}"],
+              "path": ["scenarios", "random"]
+            }
+          }
+        },
+        {
+          "name": "Get Scenario by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/scenarios/1",
+              "host": ["{{base_url}}"],
+              "path": ["scenarios", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Scenario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Describe your biggest achievement\",\n  \"description\": \"Tell us about your proudest professional accomplishment\",\n  \"category\": \"Behavioral\",\n  \"difficulty\": \"Hard\",\n  \"duration_seconds\": 180,\n  \"tips\": \"Use the STAR method for structured response\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/scenarios",
+              "host": ["{{base_url}}"],
+              "path": ["scenarios"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "Start Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scenario_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sessions/start",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "start"]
+            }
+          }
+        },
+        {
+          "name": "End Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": 85.5,\n  \"feedback\": \"Good pace, could improve clarity\",\n  \"recording_url\": \"https://s3.amazonaws.com/samvaad-videos/video.mp4\",\n  \"duration_ms\": 120000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/sessions/1/end",
+              "host": ["{{base_url}}"],
+              "path": ["sessions", "1", "end"]
+            }
+          }
+        },
+        {
+          "name": "Get User Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sessions?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["sessions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stats",
+      "item": [
+        {
+          "name": "Add Performance Metrics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": 1,\n  \"clarity_score\": 8.5,\n  \"confidence_score\": 7.8,\n  \"fluency_score\": 8.2,\n  \"pace_score\": 8.0,\n  \"comments\": \"Great response structure\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/stats/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "metrics"]
+            }
+          }
+        },
+        {
+          "name": "Get Performance Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stats/summary",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Get Performance Trend",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/stats/trend",
+              "host": ["{{base_url}}"],
+              "path": ["stats", "trend"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {
+          "name": "Log Activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firebase_uid\": \"user123\",\n  \"timestamp\": 1234567890000,\n  \"screen_name\": \"SessionScreen\",\n  \"event_type\": \"Practice Started\",\n  \"duration_ms\": 5000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/activity-logs",
+              "host": ["{{base_url}}"],
+              "path": ["activity-logs"]
+            }
+          }
+        },
+        {
+          "name": "Get Activity Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/activity-logs?page=1&limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["activity-logs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ]
+}
